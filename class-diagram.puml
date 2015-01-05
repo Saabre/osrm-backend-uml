@@ -1,0 +1,311 @@
+@startuml
+
+' Hide/Show
+
+hide members
+hide stereotype
+set namespaceSeparator none
+
+!include classes/algorithms.puml
+!include classes/contractor.puml
+!include classes/data-structures-p1.puml
+!include classes/data-structures-p2.puml
+!include classes/descriptors.puml
+!include classes/extractor.puml
+!include classes/include.puml
+!include classes/plugins.puml
+!include classes/routing-algorithms.puml
+!include classes/server.puml
+!include classes/server-data-structures.puml
+!include classes/server-http.puml
+!include classes/util.puml
+
+' Link between sections 
+
+' Algorithms 
+
+    BasicRoutingInterface -- BFSComponentExplorer
+    CoordinatePairCalculator -- FixedPointCoordinate
+
+    DescriptionFactory o-- DouglasPeucker 
+    DescriptionFactory o-- PolylineCompressor
+    DescriptionFactory o-- PhantomNode
+
+    JSONDescriptor o-- ExtractRouteNames
+    JSONDescriptor -- Azimuth
+
+    ExtractRouteNames -- RouteNames 
+    IteratorbasedCRC32 -- Prepare
+    TarjanSCC -- TarjanNode
+    TarjanSCC -- TarjanEdgeData
+    TarjanSCC -- TarjanStackFrame
+
+    DouglasPeucker -- SegmentInformation
+    PolylineCompressor -- SegmentInformation
+
+' Contractor 
+
+    EdgeBasedGraphFactory *- GeometryCompressor
+    EdgeBasedGraphFactory *-- SpeedProfileProperties : speed_profile
+
+    EdgeBasedGraphFactory -up- EdgeBasedNode
+    EdgeBasedGraphFactory -- EdgeBasedEdge
+    EdgeBasedGraphFactory - Prepare
+    EdgeBasedGraphFactory -- OriginalEdgeData
+
+    Prepare o-- NodeInfo
+    Prepare o-- TurnRestriction
+    Prepare o-- NodeID
+    Prepare o-- ImportEdge
+
+    Prepare -- DynamicGraph
+    Prepare -- StaticGraph
+
+    Prepare -- Contractor
+    Prepare -- StaticRTree
+
+
+    Contractor -- ContractorEdgeData
+    Contractor -- ContractorHeapData
+    Contractor -- ContractorThreadData
+    Contractor -- NodePriorityData
+    Contractor -- ContractionStats
+    Contractor -- RemainingNodeData
+    Contractor -- ThreadDataContainer
+
+' DataStructures
+
+    BinaryHeap -- ArrayStorage
+    BinaryHeap *-- HeapElement
+    BinaryHeap *-- HeapNode
+
+    DeallocatingVectorIterator *-- DeallocatingVectorIteratorState
+    DeallocatingVectorRemoveIterator *-- DeallocatingVectorIteratorState
+    DeallocatingVector -- DeallocatingVectorIterator
+    DeallocatingVector -- DeallocatingVectorRemoveIterator
+
+    DynamicGraph *-- Node
+    DynamicGraph *-- Edge
+    DynamicGraph *-- DeallocatingVector
+ 
+    ' Verify
+    DynamicGraph -- NodeBasedEdge
+    ' End
+
+    HilbertCode -- FixedPointCoordinate
+
+    ImportNode --> ExternalMemoryNode
+
+    ImportNode *-- HashTable
+    ExternalMemoryNode --> NodeInfo
+
+    LRUCache *-- CacheEntry
+
+    PhantomNodes o-- PhantomNode : source_phantom
+    PhantomNodes o-- PhantomNode : target_phantom
+
+    QueryEdge *-- EdgeData
+
+' Part 2
+
+    RestrictionMap *-- RestrictionTarget
+    RestrictionMap *-- RestrictionSource
+
+    SearchEngineData *-- HeapData
+    SearchEngineData *-- BinaryHeap
+
+    SearchEngine o-- ShortestPathRouting
+    SearchEngine o-- ManyToManyRouting
+    SearchEngine o-- AlternativeRouting
+    SearchEngine o-- SearchEngineData
+
+
+    StaticGraph o-- InputEdge
+    StaticGraph o-- NodeArrayEntry
+    StaticGraph o-- EdgeArrayEntry
+
+    StaticKDTree o-- InputPoint
+    StaticKDTree -- BoundingBox
+    StaticKDTree -- EuclidianMetric
+    EuclidianMetric -- BoundingBox
+
+    StaticKDTree -- Tree
+    StaticKDTree -- NNTree
+    StaticKDTree -- Less
+    StaticKDTree -- NoData
+
+    IncrementalQueryCandidate -- decide_type_visitor
+
+    StaticRTree -- RectangleInt2D
+    StaticRTree -- TreeNode
+    StaticRTree -- WrappedInputElement
+    StaticRTree -- LeafNode
+    StaticRTree -- QueryCandidate
+    StaticRTree -- IncrementalQueryCandidate
+
+    TurnInstructionsClass -- TurnInstruction
+
+    XORFastHashStorage -- HashCell
+    XORFastHashStorage *-- XORFastHash
+
+    SharedDataFacade *-- SharedDataTimestamp
+    SharedDataFacade *-- SharedDataLayout
+    SharedDataFacade *-- SharedDataType
+    SharedDataFacade *-- SharedMemory
+    SharedDataFacade *-- StaticRTree
+
+' Descriptor
+
+    BaseDescriptor o-- DescriptorConfig
+    BaseDescriptor --> GPXDescriptor 
+    BaseDescriptor --> JSONDescriptor
+
+    DescriptionFactory *-- RouteSummary
+
+    JSONDescriptor *-- RoundAbout
+    JSONDescriptor *-- Segment
+
+    ' JSONDescriptor *-- DescriptorConfig
+    JSONDescriptor *-- DescriptionFactory
+    JSONDescriptor *-- FixedPointCoordinate
+
+' Extractor
+
+    BaseParser o-- ExtractorCallbacks
+    BaseParser o-- ScriptingEnvironment
+    BaseParser --> PBFParser
+    BaseParser --> XMLParser
+    BaseParser -- ExtractionWay
+    BaseParser -- ImportNode
+
+    ExtractorCallbacks o-up- ExtractionContainers
+    ExtractorCallbacks -- InputRestrictionContainer
+    ExtractorCallbacks -- ExtractionWay
+    ExtractorCallbacks -- ExternalMemoryNode
+    ExtractorCallbacks -- InternalExtractorEdge
+
+    ExtractionWay -- Directions
+    ExtractorRelation o-- Type
+    
+    ExtractionContainers -up- Cmp
+    ExtractionContainers -up- CmpNodeByID
+    ExtractionContainers -up- CmpWayByID
+    ExtractionContainers -up- CmpRestrictionContainerByFrom
+    ExtractionContainers -up- CmpRestrictionContainerByTo
+    ExtractionContainers -up- CmpEdgeByStartID
+    ExtractionContainers -up- CmpEdgeByTargetID
+
+    ExtractionContainers -- RangeTable
+    InternalDataFacade *-- RangeTable
+    SharedDataFacade -- RangeTable
+
+    PBFParser *-- ParserThreadData
+    PBFParser *-- ConcurrentQueue
+    ParserThreadData o-- EntityType
+
+    Extractor *-- BaseParser
+
+' Library
+
+    OSRM -- http.Reply
+    OSRM *-- OSRM_impl
+    OSRM -- RouteParameters
+
+    OSRM_impl -- RouteParameters
+    OSRM_impl o-- SharedBarriers
+    OSRM_impl o-- BaseDataFacade
+
+' Plugins
+    
+    BasePlugin - RouteParameters
+    BasePlugin - http.Reply
+
+    BasePlugin --> DistanceTablePlugin
+    BasePlugin --> HelloWorldPlugin
+    BasePlugin --> LocatePlugin
+    BasePlugin --> NearestPlugin
+    BasePlugin --> TimestampPlugin
+    BasePlugin --> ViaRoutePlugin 
+
+    ViaRoutePlugin o-- SearchEngine
+    ViaRoutePlugin -- JSONDescriptor
+
+' Routing Algorithms
+ 
+    BasicRoutingInterface --> AlternativeRouting 
+    BasicRoutingInterface --> ManyToManyRouting
+    BasicRoutingInterface --> ShortestPathRouting
+
+    AlternativeRouting -- RankedCandidateNode    
+    ManyToManyRouting -- NodeBucket
+
+' Server
+    
+    http.Connection *-- http.Reply
+    http.Connection -- http.CompressionType
+    
+    http.RequestHandler o-- OSRM
+    http.RequestHandler o-- http.Request
+    http.RequestHandler o-- http.Reply
+    http.RequestHandler -- RouteParameters
+    http.RequestHandler -- APIGrammar
+
+    http.RequestParser -- http.state
+    http.RequestParser -- http.request
+    http.RequestParser -- http.Connection
+
+    Server *-- RequestHandler
+    Server o-- http.Connection
+
+    http.Reply -- http.status_type
+    http.Reply o-- http.Header
+
+    ServerFactory -- Server
+
+' Server/DataStructures
+
+    InternalDataFacade <-- BaseDataFacade
+    SharedDataFacade <-- BaseDataFacade
+    BlockID -- SharedDataLayout 
+    SharedDataTimestamp o-- SharedDataType : layout
+    SharedDataTimestamp o-- SharedDataType : data
+
+' Util
+
+    SimpleLogger o-- LogLevel 
+    hide OSRMException
+    hide SimpleLogger
+    hide LogLevel
+    hide LogPolicy
+
+' Other hide instructions 
+
+    hide MapStorage
+    hide UnorderedMapStorage
+    hide Percent
+    hide range
+    hide FingerPrint
+
+' Unused
+
+    hide PhantomNodeLists
+    hide XORMiniHash
+
+' Main
+
+    class ComponentsBinary <<(M,#e26161>> {
+        +main()
+    }
+
+    class PrepareBinary <<(M,#e26161>> {
+        +main()
+    }
+
+    class ExtractorBinary <<(M,#e26161>> {
+        +main()
+    }
+
+    ExtractorBinary -- Extractor
+    PrepareBinary -- Prepare
+    ComponentsBinary -- TarjanSCC
+@enduml

@@ -1,0 +1,271 @@
+@startuml
+
+
+    ' BaseParser.cpp .h
+
+    class BaseParser {
+        +BaseParser()
+        +BaseParser(BaseParser &)
+        +BaseParser(ExtractorCallbacks *extractor_callbacks, ScriptingEnvironment &scripting_environment)
+        +virtual ~BaseParser() {}
+        +virtual bool ReadHeader() = 0
+        +virtual bool Parse() = 0
+        +virtual void ParseNodeInLua(ImportNode &node, lua_State *lua_state)
+        +virtual void ParseWayInLua(ExtractionWay &way, lua_State *lua_state)
+        +virtual void report_errors(lua_State *lua_state, int status)
+        #virtual void ReadUseRestrictionsSetting()
+        #virtual void ReadRestrictionExceptions()
+        #virtual bool ShouldIgnoreRestriction(string &except_tag_string)
+        #ExtractorCallbacks *extractor_callbacks
+        #lua_State *lua_state
+        #ScriptingEnvironment &scripting_environment
+        #vector<string> restriction_exceptions
+        #bool use_turn_restrictions
+    }
+
+    ' ExtractionContainers.cpp .h
+
+    class ExtractionContainers {
+        -static unsigned stxxl_memory
+        +typedef stxxl::vector<NodeID> STXXLNodeIDVector
+        +typedef stxxl::vector<ExternalMemoryNode> STXXLNodeVector
+        +typedef stxxl::vector<InternalExtractorEdge> STXXLEdgeVector
+        +typedef stxxl::vector<string> STXXLStringVector
+        +typedef stxxl::vector<InputRestrictionContainer> STXXLRestrictionsVector
+        +typedef stxxl::vector<WayIDStartAndEndEdge> STXXLWayIDStartEndVector
+
+        +STXXLNodeIDVector used_node_id_list
+        +STXXLNodeVector all_nodes_list
+        +STXXLEdgeVector all_edges_list
+        +STXXLStringVector name_list
+        +STXXLRestrictionsVector restrictions_list
+        +STXXLWayIDStartEndVector way_start_end_id_list
+        +FingerPrint fingerprint
+        +ExtractionContainers()
+        +virtual ~ExtractionContainers()
+        +void PrepareData(string &output_file_name,string &restrictions_file_name)
+    }
+
+    ' ExtractorHelperFunctions
+    '     Only functions
+
+    ' ExtractionWay
+
+    enum Directions { 
+        notSure = 0,
+        oneway,
+        bidirectional,
+        opposite 
+    }
+
+    class ExtractionWay <<(S,#83e6bc)>> {
+        +ExtractionWay()
+        +void Clear()
+        +unsigned id
+        +unsigned nameID
+        +double speed
+        +double backward_speed
+        +double duration
+        +Directions direction
+        +string name
+        +short type
+        +bool access
+        +bool roundabout
+        +bool isAccessRestricted
+        +bool ignoreInGrid
+        +vector<NodeID> path
+        +HashTable<string, string> keyVals
+    }
+
+    ' Extractor.cpp .h
+
+    class Extractor {
+        #unsigned requested_num_threads
+        #boost::filesystem::path config_file_path
+        #boost::filesystem::path input_path
+        #boost::filesystem::path profile_path
+        #string output_file_name
+        #string restriction_file_name
+        #bool file_has_pbf_format
+        #bool ParseArguments(int argc, char *argv[]) ' \brief Parses "extractor's" command line arguments
+        #void GenerateOutputFilesNames() ' \brief Parses config file, if present in options 
+        +Extractor()
+        +Extractor(Extractor &)
+        +virtual ~Extractor()
+        +int Run(int argc, char *argv[])
+    }
+
+    ' Extractor
+
+    class ExtractorCallbacks {
+        -unordered_map<string, NodeID> &string_map
+        -ExtractionContainers &external_memory
+        +ExtractorCallbacks()
+        +ExtractorCallbacks(ExtractorCallbacks &)
+        +ExtractorCallbacks(ExtractionContainers &extraction_containers, unordered_map<string, NodeID> &string_map)
+        +void ProcessNode(ExternalMemoryNode &node)
+        +bool ProcessRestriction(InputRestrictionContainer &restriction)
+        +void ProcessWay(ExtractionWay &way)
+    }
+
+
+    ' ExtractorStructs.h
+
+    enum Type { 
+        unknown = 0,
+        ferry,
+        turnRestriction 
+    }
+
+    class ExtractorRelation <<(S,#83e6bc)>> {
+        ExtractorRelation()
+        Type type
+        HashTable<string, string> keyVals
+    }
+
+    class WayIDStartAndEndEdge <<(S,#83e6bc)>> {
+        +unsigned wayID
+        +NodeID firstStart
+        +NodeID firstTarget
+        +NodeID lastStart
+        +NodeID lastTarget
+        +WayIDStartAndEndEdge()
+        +WayIDStartAndEndEdge(unsigned w, NodeID fs, NodeID ft, NodeID ls, NodeID lt)
+        +{static} WayIDStartAndEndEdge min_value()
+        +{static} WayIDStartAndEndEdge max_value()
+    }
+
+    class CmpWayByID <<(S,#83e6bc)>> {
+        +typedef WayIDStartAndEndEdge value_type
+        +bool operator()(WayIDStartAndEndEdge &a, WayIDStartAndEndEdge &b)
+        +value_type max_value()
+        +value_type min_value()
+    }
+
+    class Cmp <<(S,#83e6bc)>> {
+        +typedef NodeID value_type
+        +bool operator()(NodeID left, NodeID right)
+        +value_type max_value()
+        +value_type min_value()
+    }
+
+    class CmpNodeByID <<(S,#83e6bc)>> {
+        typedef ExternalMemoryNode value_type
+        bool operator()(ExternalMemoryNode &left, ExternalMemoryNode &right)
+        value_type max_value()
+        value_type min_value()
+    }
+
+' InternalExtractorEdge.h
+
+    class InternalExtractorEdge <<(S,#83e6bc)>> {
+        +InternalExtractorEdge()
+        +InternalExtractorEdge(NodeID start, NodeID target, short type, short direction, double speed, unsigned name_id, bool is_roundabout, bool is_in_tiny_cc, bool is_duration_set, bool is_access_restricted, bool is_contra_flow, bool is_split)
+        +static InternalExtractorEdge min_value()
+        +static InternalExtractorEdge max_value()
+        +NodeID start
+        +NodeID target
+        +short type
+        +short direction
+        +double speed
+        +unsigned name_id
+        +bool is_roundabout
+        +bool is_in_tiny_cc
+        +bool is_duration_set
+        +bool is_access_restricted
+        +bool is_contra_flow
+        +bool is_split
+        +FixedPointCoordinate source_coordinate
+        +FixedPointCoordinate target_coordinate
+    }
+
+    class CmpEdgeByStartID <<(S,#83e6bc)>> {
+        +typedef InternalExtractorEdge value_type
+        +bool operator()(InternalExtractorEdge &a, InternalExtractorEdge &b)
+        +value_type max_value()
+        +value_type min_value()
+    }
+
+    class CmpEdgeByTargetID <<(S,#83e6bc)>> {
+        typedef InternalExtractorEdge value_type
+        bool operator()(InternalExtractorEdge &a, InternalExtractorEdge &b)
+        value_type max_value()
+        value_type min_value()
+    }
+
+    ' PBFParser.cpp .h
+
+    enum EntityType {
+        TypeDummy = 0,
+        TypeNode = 1,
+        TypeWay = 2,
+        TypeRelation = 4,
+        TypeDenseNode = 8 
+    }
+
+    class ParserThreadData <<(S,#83e6bc)>> {
+        +int currentGroupID
+        +int currentEntityID
+        +EntityType entityTypeIndicator
+
+        +OSMPBF::BlobHeader PBFBlobHeader
+        +OSMPBF::Blob PBFBlob
+
+        +OSMPBF::HeaderBlock PBFHeaderBlock
+        +OSMPBF::PrimitiveBlock PBFprimitiveBlock
+
+        +vector<char> charBuffer
+    }
+
+    class PBFParser {
+        +PBFParser(char *file_name, ExtractorCallbacks *extractor_callbacks, ScriptingEnvironment &scripting_environment, unsigned num_parser_threads = 0)
+        +virtual ~PBFParser()
+        +bool ReadHeader()
+        +bool Parse()
+        -void ReadData()
+        -void ParseData()
+        -void parseDenseNode(ParserThreadData *thread_data)
+        -void parseNode(ParserThreadData *thread_data)
+        -void parseRelation(ParserThreadData *thread_data)
+        -void parseWay(ParserThreadData *thread_data)
+        -void loadGroup(ParserThreadData *thread_data)
+        -void loadBlock(ParserThreadData *thread_data)
+        -bool readPBFBlobHeader(fstream &stream, ParserThreadData *thread_data)
+        -bool unpackZLIB(ParserThreadData *thread_data)
+        -bool unpackLZMA(ParserThreadData *thread_data)
+        -bool readBlob(fstream &stream, ParserThreadData *thread_data)
+        -bool readNextBlock(fstream &stream, ParserThreadData *thread_data)
+        -static int NANO = 1000 * 1000 * 1000
+        -static int MAX_BLOB_HEADER_SIZE = 64 * 1024
+        -static int MAX_BLOB_SIZE = 32 * 1024 * 1024
+        -unsigned group_count
+        -unsigned block_count
+        -fstream input // the input stream to parse
+        -shared_ptr<ConcurrentQueue<ParserThreadData *>> thread_data_queue
+        -unsigned num_parser_threads
+    }
+
+    ' ScriptingEnvironment.cpp .h
+
+    class ScriptingEnvironment {
+        +ScriptingEnvironment()
+        +ScriptingEnvironment(char *file_name)
+        +lua_State *getLuaState()
+        +void initLuaState(lua_State* lua_state)
+        +string file_name
+        +tbb::enumerable_thread_specific<shared_ptr<lua_State>> script_contexts
+    }
+
+    ' XMLParser.cpp .h
+
+    class XMLParser {
+        +XMLParser(char *filename, ExtractorCallbacks *extractor_callbacks, ScriptingEnvironment &scripting_environment)
+        +bool ReadHeader()
+        +bool Parse()
+        -InputRestrictionContainer ReadXMLRestriction()
+        -ExtractionWay ReadXMLWay()
+        -ImportNode ReadXMLNode()
+        -xmlTextReaderPtr inputReader
+    }
+
+@enduml

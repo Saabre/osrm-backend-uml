@@ -1,0 +1,97 @@
+@startuml
+
+
+    ' BaseDescriptor
+    
+    class DescriptorConfig <<(S,#83e6bc)>> {
+        +DescriptorConfig()
+        +bool instructions
+        +bool geometry
+        +bool encode_geometry
+        +unsigned short zoom_level
+    }
+
+    class BaseDescriptor<class DataFacadeT> {
+        +BaseDescriptor()
+        +virtual ~BaseDescriptor()
+        +virtual void Run(RawRouteData &raw_route, http::Reply &reply)
+        +virtual void SetConfig(DescriptorConfig &config)
+    }
+
+    ' DescriptionFactory.cpp .h
+    
+    class RouteSummary <<(S,#83e6bc)>> {
+        +unsigned distance
+        +EdgeWeight duration
+        +unsigned source_name_id
+        +unsigned target_name_id
+        +RouteSummary()
+        +void BuildDurationAndLengthStrings(double raw_distance, unsigned raw_duration)
+    }
+
+    class DescriptionFactory<class DataFacadeT> {
+        -DouglasPeucker polyline_generalizer
+        -PolylineCompressor polyline_compressor
+        -PhantomNode start_phantom, target_phantom
+        -double DegreeToRadian(double degree)
+        -double RadianToDegree(double degree)
+        -vector<unsigned> via_indices
+        +RouteSummary summary
+        +double entireLength
+        +vector<SegmentInformation> path_description
+        +DescriptionFactory()
+        +void AppendSegment(FixedPointCoordinate &coordinate, PathData &data)
+        +void BuildRouteSummary(double distance, unsigned time)
+        +void SetStartSegment(PhantomNode &start_phantom, bool traversed_in_reverse)
+        +void SetEndSegment(PhantomNode &start_phantom, bool traversed_in_reverse, bool is_via_location = false)
+        +JSON::Value AppendEncodedPolylineString(bool return_encoded)
+        +vector<unsigned> & GetViaIndices()
+        +void Run(DataFacadeT *facade, unsigned zoomLevel)
+    }
+
+    ' GPXDescriptor
+
+    class GPXDescriptor<class DataFacadeT> {
+        -DescriptorConfig config
+        -FixedPointCoordinate current
+        -DataFacadeT * facade
+        -void AddRoutePoint(FixedPointCoordinate & coordinate, vector<char> & output)
+        +GPXDescriptor(DataFacadeT *facade)
+        +void SetConfig(DescriptorConfig &c)
+        +void Run(RawRouteData &raw_route, http::Reply &reply)
+    }
+    ' JSONDescriptor.h
+
+    class Segment <<(S,#83e6bc)>> {
+        +Segment()
+        +Segment(unsigned n, int l, unsigned p)
+        +unsigned name_id
+        +int length
+        +unsigned position
+    }
+
+    class RoundAbout <<(S,#83e6bc)>> {
+        RoundAbout()
+        int start_index
+        unsigned name_id
+        int leave_at_exit
+    }
+
+    class JSONDescriptor<class DataFacadeT> {
+        -DataFacadeT *facade
+        -DescriptorConfig config
+        -DescriptionFactory description_factory, alternate_description_factory
+        -FixedPointCoordinate current
+        -unsigned entered_restricted_area_count
+        -RoundAbout round_about
+        -vector<Segment> shortest_path_segments, alternative_path_segments
+        -ExtractRouteNames<DataFacadeT, Segment> GenerateRouteNames
+        +JSONDescriptor(DataFacadeT *facade)
+        +void SetConfig(DescriptorConfig &c)
+        +unsigned DescribeLeg(vector<PathData> route_leg, PhantomNodes &leg_phantoms, bool target_traversed_in_reverse, bool is_via_leg)
+        +void Run(RawRouteData &raw_route, http::Reply &reply)
+        +void BuildTextualDescription(DescriptionFactory &description_factory, JSON::Array &json_instruction_array, int route_length, vector<Segment> &route_segments_list)
+    }    
+
+
+@enduml

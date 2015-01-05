@@ -1,0 +1,493 @@
+@startuml
+
+    ' BinaryHeap.h
+
+    class ArrayStorage {
+        +ArrayStorage(size_t size)
+        +~ArrayStorage()
+        +Key &operator[](NodeID node)
+        +void Clear()
+
+        -Key *positions
+    }
+
+    class MapStorage {
+
+        +MapStorage(size_t)
+        +Key &operator[](NodeID node)
+        +void Clear()
+
+        -map<NodeID, Key> nodes
+    }
+
+    class UnorderedMapStorage {
+        +UnorderedMapStorage(size_t)
+        +Key &operator[](NodeID node)
+        +Key &operator[](NodeID node)
+        +void Clear() { nodes.clear() }
+        -unordered_map<NodeID, Key> nodes
+    }
+
+    class HeapNode {
+        +HeapNode(NodeID n, Key k, Weight w, Data d)
+        +NodeID node
+        +Key key
+        +Weight weight
+        +Data data
+    }
+
+    class HeapElement <<(S,#83e6bc)>> {
+        Key index
+        Weight weight
+    }
+
+    class BinaryHeap {
+        -BinaryHeap(BinaryHeap &right)
+        -void operator=(BinaryHeap &right)
+
+        +typedef Weight WeightType
+        +typedef Data DataType
+        +BinaryHeap(size_t maxID)
+        +void Clear()
+        +size_t Size()
+        +bool Empty()
+        +void Insert(NodeID node, Weight weight, Data &data)
+        +Data &GetData(NodeID node)
+        +Data &GetData(NodeID node)
+        +Weight &GetKey(NodeID node)
+        +bool WasRemoved(NodeID node)
+        +bool WasInserted(NodeID node)
+        +NodeID Min()
+        +NodeID DeleteMin()
+        +void DeleteAll()
+        +void DecreaseKey(NodeID node, Weight weight)
+
+        -vector<HeapNode> inserted_nodes
+        -vector<HeapElement> heap
+        -IndexStorage node_index
+
+        -void Downheap(Key key)
+        -void Upheap(Key key)
+        -void CheckHeap()
+    }
+
+    ' ConcurrentQueue.h
+
+    class ConcurrentQueue {
+        +ConcurrentQueue(size_t max_size) : m_internal_queue(max_size) {}
+
+        +void push(Data &data)
+        +bool empty()
+        +void wait_and_pop(Data &popped_value)
+        +bool try_pop(Data &popped_value)
+
+        -boost::circular_buffer<Data> m_internal_queue
+        -mutex m_mutex
+        -condition_variable m_not_empty
+        -condition_variable m_not_full
+    }
+
+    ' Coordinate.cpp
+    
+    class FixedPointCoordinate <<(S,#83e6bc)>> {
+        +int lat
+        +int lon
+
+        +FixedPointCoordinate()
+        +FixedPointCoordinate(int lat, int lon)
+        +void Reset()
+        +bool isSet()
+        +bool isValid()
+        +bool operator==(FixedPointCoordinate &other)
+        +{{static}} double ApproximateDistance(int lat1, int lon1, int lat2, int lon2)
+        +{{static}} double ApproximateDistance(FixedPointCoordinate &first_coordinate, FixedPointCoordinate &second_coordinate)
+        +{{static}} float ApproximateEuclideanDistance(FixedPointCoordinate &first_coordinate, FixedPointCoordinate &second_coordinate)
+        +{{static}} float ApproximateEuclideanDistance(int lat1, int lon1, int lat2, int lon2)
+        +{{static}} float ApproximateSquaredEuclideanDistance(FixedPointCoordinate &first_coordinate, FixedPointCoordinate &second_coordinate)
+        +{{static}} void convertInternalLatLonToString(int value, string &output)
+        +{{static}} void convertInternalCoordinateToString(FixedPointCoordinate &coordinate, string &output)
+        +{{static}} void convertInternalReversedCoordinateToString(FixedPointCoordinate &coordinate, string &output)
+        +{{static}} float ComputePerpendicularDistance(FixedPointCoordinate &segment_source, FixedPointCoordinate &segment_target, FixedPointCoordinate &query_location)
+        +{{static}} float ComputePerpendicularDistance(FixedPointCoordinate &segment_source, FixedPointCoordinate &segment_target, FixedPointCoordinate &query_location, FixedPointCoordinate &nearest_location, float &ratio)
+        +{{static}} int OrderedPerpendicularDistanceApproximation(FixedPointCoordinate &segment_source, FixedPointCoordinate &segment_target, FixedPointCoordinate &query_location)
+        +{{static}} float GetBearing(FixedPointCoordinate &A, FixedPointCoordinate &B)
+        +float GetBearing(FixedPointCoordinate &other)
+        +void Output(ostream &out)
+        +{{static}} float DegreeToRadian(float degree)
+        +{{static}} float RadianToDegree(float radian)
+    }
+    
+    ' DeallocatingVector.h
+
+    class DeallocatingVectorIteratorState <<(S,#83e6bc)>> {
+        +DeallocatingVectorIteratorState()
+        +DeallocatingVectorIteratorState(DeallocatingVectorIteratorState &r)
+        +DeallocatingVectorIteratorState(size_t idx, vector<ElementT *> *input_list)
+        +size_t index
+        +vector<ElementT *> *bucket_list
+
+        +DeallocatingVectorIteratorState &operator=(DeallocatingVectorIteratorState &other)
+    }
+
+    class DeallocatingVectorIterator {
+        -DeallocatingVectorIteratorState<ElementT> current_state
+        +friend class boost::iterator_core_access
+
+        +DeallocatingVectorIterator() {}
+        +DeallocatingVectorIterator(size_t idx, vector<ElementT *> *input_list)
+
+        +void advance(size_t n)
+        +void increment()
+        +void decrement()
+        +bool equal(DeallocatingVectorIterator &other)
+        +ptrdiff_t distance_to(DeallocatingVectorIterator &other)
+        +ElementT &dereference()
+        +ElementT &operator[](size_t index)
+    }
+
+    class DeallocatingVectorRemoveIterator {
+        -DeallocatingVectorIteratorState<ElementT> current_state
+        +friend class boost::iterator_core_access
+
+        +DeallocatingVectorRemoveIterator(size_t idx, vector<ElementT *> *input_list)
+
+        +void increment()
+        +bool equal(DeallocatingVectorRemoveIterator &other)
+        +ptrdiff_t distance_to(DeallocatingVectorRemoveIterator &other)
+        +ElementT &dereference()
+    }
+
+    class DeallocatingVector {
+        -size_t current_size
+        -vector<ElementT *> bucket_list
+
+        +typedef DeallocatingVectorIterator<ElementT, ELEMENTS_PER_BLOCK> iterator
+        +typedef DeallocatingVectorIterator<ElementT, ELEMENTS_PER_BLOCK> const_iterator
+
+        +// this forward-only iterator deallocates all buckets that have been visited
+        +typedef DeallocatingVectorRemoveIterator<ElementT, ELEMENTS_PER_BLOCK> deallocation_iterator
+
+        +DeallocatingVector()
+        +~DeallocatingVector()
+        +void swap(DeallocatingVector<ElementT, ELEMENTS_PER_BLOCK> &other)
+        +void clear()
+        +void push_back(ElementT &element)
+        +void emplace_back(Ts &&... element)
+        +void reserve(size_t)
+        +void resize(size_t new_size)
+        +size_t size()
+        +size_t capacity()
+        +iterator begin()
+        +iterator end()
+        +deallocation_iterator dbegin()
+        +deallocation_iterator dend()
+        +const_iterator begin() 
+        +const_iterator end()
+        +ElementT &operator[](size_t index)
+        +ElementT &operator[](size_t index) 
+        +ElementT &back()
+        +ElementT &back() 
+        +void append(InputIterator first, InputIterator last)
+    }
+
+
+    ' Dynamic Graph
+
+    class InputEdge {
+        +NodeIterator source
+        +NodeIterator target
+        +EdgeDataT data
+
+        +InputEdge()
+        +InputEdge(NodeIterator source, NodeIterator target, Ts &&...data)
+        +bool operator<(InputEdge &right)
+    }
+
+    class Node <<(S,#83e6bc)>> {
+        +EdgeIterator firstEdge // index of the first edge
+        +unsigned edges // amount of edges
+    }
+
+    class Edge <<(S,#83e6bc)>> {
+        +NodeIterator target
+        +EdgeDataT data
+    }
+
+    class DynamicGraph {
+        +typedef EdgeDataT EdgeData
+        +typedef unsigned NodeIterator
+        +typedef unsigned EdgeIterator
+        +typedef osrm::range<EdgeIterator> EdgeRange
+
+        +DynamicGraph(int32_t nodes)
+        +DynamicGraph(int32_t nodes, ContainerT &graph)
+        +~DynamicGraph() {}
+        +unsigned GetNumberOfNodes()
+        +unsigned GetNumberOfEdges()
+        +unsigned GetOutDegree(NodeIterator n)
+        +unsigned GetDirectedOutDegree(NodeIterator n)
+        +NodeIterator GetTarget(EdgeIterator e) 
+        +void SetTarget(EdgeIterator e, NodeIterator n)
+        +EdgeDataT &GetEdgeData(EdgeIterator e)
+        +EdgeDataT &GetEdgeData(EdgeIterator e)
+        +EdgeIterator BeginEdges(NodeIterator n)
+        +EdgeIterator EndEdges(NodeIterator n)
+        +EdgeRange GetAdjacentEdgeRange(NodeIterator node)
+        +NodeIterator InsertNode()
+        +EdgeIterator InsertEdge(NodeIterator from, NodeIterator to, EdgeDataT &data)
+        +void DeleteEdge(NodeIterator source, EdgeIterator e)
+        +int32_t DeleteEdgesTo(NodeIterator source, NodeIterator target)
+        +EdgeIterator FindEdge(NodeIterator from, NodeIterator to)
+
+        #bool isDummy(EdgeIterator edge) 
+        #void makeDummy(EdgeIterator edge)
+
+        #NodeIterator number_of_nodes
+        #atomic_uint number_of_edges
+
+        #vector<Node> node_list
+        #DeallocatingVector<Edge> edge_list
+    }
+
+    ' EdgeBasedNode
+
+    class EdgeBasedNode <<(S,#83e6bc)>> {
+
+        +EdgeBasedNode()
+
+        +EdgeBasedNode(NodeID forward_edge_based_node_id, NodeID reverse_edge_based_node_id, NodeID u, NodeID v, unsigned name_id, int forward_weight, int reverse_weight, int forward_offset, int reverse_offset, unsigned packed_geometry_id, unsigned short fwd_segment_position, bool belongs_to_tiny_component ) 
+        +static FixedPointCoordinate Centroid(FixedPointCoordinate & a, FixedPointCoordinate & b)
+
+        +bool IsCompressed()
+        +NodeID forward_edge_based_node_id // needed for edge-expanded graph
+        +NodeID reverse_edge_based_node_id // needed for edge-expanded graph
+        +NodeID u   // indices into the coordinates array
+        +NodeID v   // indices into the coordinates array
+        +unsigned name_id   // id of the edge name
+        +int forward_weight // weight of the edge
+        +int reverse_weight // weight in the other direction (may be different)
+        +int forward_offset // prefix sum of the weight up the edge TODO: short must suffice
+        +int reverse_offset // prefix sum of the weight from the edge TODO: short must suffice
+        +unsigned packed_geometry_id // if set, then the edge represents a packed geometry
+        +unsigned short fwd_segment_position // segment id in a compressed geometry
+        +bool is_in_tiny_cc
+    }
+
+    ' HashTable
+
+    class HashTable {
+        -typedef pair<Key, Value> KeyValPair
+        -vector<KeyValPair> table
+
+        +HashTable()
+        +void Add(Key &key, Value &value)
+
+        +void Clear()
+        +Value Find(Key &key)
+        +bool Holds(Key &key)
+    }
+
+    ' HilbertValue
+
+    class HilbertCode {
+          +uint64_t operator()(FixedPointCoordinate &current_coordinate)
+          +HilbertCode() {}
+          +HilbertCode(HilbertCode &)
+
+          -uint64_t BitInterleaving(uint32_t a, uint32_t b)
+          -void TransposeCoordinate(uint32_t *X)
+    }
+
+    ' Import Edge
+    
+    class NodeBasedEdge <<(S,#83e6bc)>> {
+        +bool operator<(NodeBasedEdge &e)
+        +NodeBasedEdge(NodeID source, NodeID target, NodeID name_id, EdgeWeight weight, bool forward, bool backward, short type, bool roundabout, bool in_tiny_cc, bool access_restricted, bool contra_flow, bool is_split)
+
+        +NodeID source
+        +NodeID target
+        +NodeID name_id
+        +EdgeWeight weight
+        +short type
+        +bool forward
+        +bool backward
+        +bool roundabout
+        +bool in_tiny_cc
+        +bool access_restricted
+        +bool contra_flow
+        +bool is_split
+
+        +NodeBasedEdge()
+    }
+
+    class EdgeBasedEdge <<(S,#83e6bc)>> {
+
+        +bool operator<(EdgeBasedEdge &e)
+        +EdgeBasedEdge(EdgeT &myEdge)
+        +EdgeBasedEdge()
+        +EdgeBasedEdge(NodeID source, NodeID target, NodeID edge_id, EdgeWeight weight, bool forward, bool backward)
+        +NodeID source
+        +NodeID target
+        +NodeID edge_id
+        +EdgeWeight weight : 30
+        +bool forward : 1
+        +bool backward : 1
+    }
+
+    ' ImportNode.cpp .h
+
+    class ExternalMemoryNode <<(S,#83e6bc)>> {
+        +ExternalMemoryNode(int lat, int lon, unsigned int id, bool bollard, bool traffic_light)
+        +ExternalMemoryNode()
+        +{static} ExternalMemoryNode min_value()
+        +{static} ExternalMemoryNode max_value()
+        +bool bollard
+        +bool trafficLight
+    }
+
+    class ImportNode <<(S,#83e6bc)>> {
+        +HashTable<string, string> keyVals
+        +void Clear()
+    }
+
+
+    ' InputeaderFactory.h
+    '    Function and struct only
+
+    ' JSONContainer
+    '    Function and struct only
+
+    ' LRU Cache
+    class CacheEntry <<(S,#83e6bc)>> {
+        CacheEntry(KeyT k, ValueT v)
+        KeyT key
+        ValueT value
+    }
+
+    class LRUCache<KeyT, ValueT> {
+        -unsigned capacity
+        -list<CacheEntry> itemsInCache
+        -unordered_map<KeyT, typename list<CacheEntry>::iterator> positionMap
+
+        +LRUCache(unsigned c) : capacity(c) {}
+
+        +bool Holds(KeyT key) 
+        +void Insert(KeyT key, ValueT &value)
+        +void Insert(KeyT key, ValueT value)
+        +bool Fetch(KeyT key, ValueT &result)
+        +unsigned Size()
+    }
+
+    ' NodeBasedGraph.h
+    '    Function and struct only
+
+    ' OriginalEdgeData.h
+    
+    class OriginalEdgeData <<(S,#83e6bc)>> {
+        +OriginalEdgeData()
+        +OriginalEdgeData(NodeID via_node, unsigned name_id, TurnInstruction turn_instruction, bool compressed_geometry)
+
+        +NodeID via_node
+        +unsigned name_id
+        +TurnInstruction turn_instruction
+        +bool compressed_geometry
+    }
+
+    ' Percent.h
+
+    class Percent {
+        +Percent(unsigned max_value, unsigned step = 5) 
+        +void reinit(unsigned max_value, unsigned step = 5)
+        +void printStatus(unsigned current_value)
+        +void printIncrement()
+        +void printAddition(unsigned addition)
+
+        -atomic_uint m_current_value
+        -unsigned m_max_value
+        -unsigned m_percent_interval
+        -unsigned m_next_threshold
+        -unsigned m_last_percent
+        -unsigned m_step
+
+        -void printPercent(double percent)
+    }
+    
+    ' PhantomNodes
+
+    class PhantomNode <<(S,#83e6bc)>> {
+        +PhantomNode(NodeID forward_node_id, NodeID reverse_node_id, unsigned name_id, int forward_weight, int reverse_weight, int forward_offset, int reverse_offset, unsigned packed_geometry_id, FixedPointCoordinate &location, unsigned short fwd_segment_position)
+        +PhantomNode()
+        +NodeID forward_node_id
+        +NodeID reverse_node_id
+        +unsigned name_id
+        +int forward_weight
+        +int reverse_weight
+        +int forward_offset
+        +int reverse_offset
+        +unsigned packed_geometry_id
+        +FixedPointCoordinate location
+        +unsigned short fwd_segment_position
+
+        +int GetForwardWeightPlusOffset()
+        +int GetReverseWeightPlusOffset()
+        +bool isBidirected() 
+        +bool IsCompressed()
+        +bool isValid(unsigned numberOfNodes) 
+        +bool isValid() 
+        +bool operator==(PhantomNode & other) 
+    }
+
+    ' typedef vector<vector<PhantomNode>> PhantomNodeArray
+
+    class PhantomNodeLists <<(S,#83e6bc)>> {
+        vector<PhantomNode> source_phantom_list
+        vector<PhantomNode> target_phantom_list
+    }
+
+    class PhantomNodes <<(S,#83e6bc)>> {
+        PhantomNode source_phantom
+        PhantomNode target_phantom
+    }
+
+    ' QueryEdge
+
+    class EdgeData<OtherT> <<(S,#83e6bc)>> {
+        +EdgeData()
+        +EdgeData(OtherT &other)
+
+        +NodeID id
+        +bool shortcut
+        +int distance
+        +bool forward
+        +bool backward
+    } 
+
+    class QueryEdge <<(S,#83e6bc)>> {
+        +NodeID source
+        +NodeID target
+        +EdgeData data
+
+        +QueryEdge()
+        +QueryEdge(NodeID source, NodeID target, EdgeData data)
+        +bool operator<(QueryEdge &right)
+        +bool operator==(QueryEdge &right)
+    }
+    
+    ' QueryNode.h
+
+    class NodeInfo<<(S,#83e6bc)>> {
+        +typedef NodeID key_type // type of NodeID
+        +typedef int value_type // type of lat,lons
+
+        +NodeInfo(int lat, int lon, NodeID node_id)
+        +NodeInfo()
+
+        +int lat
+        +int lon
+        +NodeID node_id
+
+        +{static} NodeInfo min_value()
+        +{static} NodeInfo max_value()
+        +value_type operator[](size_t n)
+    }
+@enduml

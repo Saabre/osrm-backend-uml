@@ -1,0 +1,125 @@
+@startuml
+
+
+    ' APIGrammar.h
+
+    ' extends qi::grammar<Iterator>
+    class APIGrammar<typename Iterator, class HandlerT> <<(S,#83e6bc)>> {
+        +APIGrammar(HandlerT * h)
+        +qi::rule<Iterator> api_call, query
+        +qi::rule<Iterator, string()> service
+        +qi::rule<Iterator, string()> zoom
+        +qi::rule<Iterator, string()> output
+        +qi::rule<Iterator, string()> string
+        +qi::rule<Iterator, string()> jsonp
+        +qi::rule<Iterator, string()> checksum
+        +qi::rule<Iterator, string()> location
+        +qi::rule<Iterator, string()> hint
+        +qi::rule<Iterator, string()> stringwithDot
+        +qi::rule<Iterator, string()> stringwithPercent
+        +qi::rule<Iterator, string()> language
+        +qi::rule<Iterator, string()> instruction
+        +qi::rule<Iterator, string()> geometry,
+        +qi::rule<Iterator, string()> cmp
+        +qi::rule<Iterator, string()> alt_route
+        +qi::rule<Iterator, string()> u
+        +qi::rule<Iterator, string()> uturns
+        +qi::rule<Iterator, string()> old_API
+        +qi::rule<Iterator, string()> HandlerT * handler
+    }
+
+    ' Connection.cpp .h
+
+    ' : public enable_shared_from_this<Connection>
+    class http.Connection {
+        +Connection(boost::asio::io_service &io_service, RequestHandler &handler)
+        +Connection(Connection &)
+        +Connection()
+        +boost::asio::ip::tcp::socket &socket()
+        +void start()
+        -void handle_read(boost::system::error_code &e, size_t bytes_transferred)
+        -void handle_write(boost::system::error_code &e)
+        -void CompressBufferCollection(vector<char> uncompressed_data, CompressionType compression_type, vector<char> &compressed_data)
+        -boost::asio::io_service::strand strand
+        -boost::asio::ip::tcp::socket TCP_socket
+        -RequestHandler &request_handler
+        -boost::array<char, 8192> incoming_data_buffer
+        -Request request
+        -RequestParser request_parser
+        -Reply reply
+    }    
+
+    ' RequestHandler.cpp .h
+
+    class RequestHandler {
+        +typedef APIGrammar<string::iterator, RouteParameters> APIGrammarParser
+        +RequestHandler()
+        +RequestHandler(RequestHandler &)
+        +void handle_request(http::Request &req, http::Reply &rep)
+        +void RegisterRoutingMachine(OSRM *osrm)
+        -OSRM *routing_machine
+    }
+
+    ' RequestParser
+
+    enum http.state { 
+        method_start,
+        method,
+        uri_start,
+        uri,
+        http_version_h,
+        http_version_t_1,
+        http_version_t_2,
+        http_version_p,
+        http_version_slash,
+        http_version_major_start,
+        http_version_major,
+        http_version_minor_start,
+        http_version_minor,
+        expecting_newline_1,
+        header_line_start,
+        header_lws,
+        header_name,
+        space_before_header_value,
+        header_value,
+        expecting_newline_2,
+        expecting_newline_3 
+    }
+
+    class http.RequestParser {
+        +RequestParser()
+        +void Reset()
+        +boost::tuple<boost::tribool, char *>
+        +Parse(Request &req, char *begin, char *end, CompressionType *compressionType)
+        -boost::tribool consume(Request &req, char input, CompressionType *compressionType)
+        -bool isChar(int c)
+        -bool isCTL(int c)
+        -bool isTSpecial(int c)
+        -bool isDigit(int c)
+        -state state_
+        -Header header
+    }
+
+    ' Server
+
+    class Server {
+        +Server(string &address, int port, unsigned thread_pool_size)
+        +void Run()
+        +void Stop()
+        +RequestHandler &GetRequestHandlerPtr()
+        -void HandleAccept(boost::system::error_code &e)
+        -unsigned thread_pool_size
+        -boost::asio::io_service io_service
+        -boost::asio::ip::tcp::acceptor acceptor
+        -shared_ptr<http::Connection> new_connection
+        -RequestHandler request_handler
+    }
+
+    ' ServerFactory
+
+    class ServerFactory <<(S,#83e6bc)>> {
+        ServerFactory()
+        ServerFactory(ServerFactory &)
+        static Server *CreateServer(string &ip_address, int ip_port, unsigned requested_num_threads)
+    }
+@enduml

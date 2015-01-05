@@ -1,0 +1,184 @@
+@startuml
+
+    ' Constractor.h
+
+    class ContractorEdgeData <<(S,#83e6bc)>>{
+        +ContractorEdgeData()
+        +ContractorEdgeData(unsigned distance, unsigned original_edges, unsigned id, bool shortcut, bool forward, bool backward)
+
+        +unsigned distance
+        +unsigned id
+        +unsigned originalEdges
+        +bool shortcut
+        +bool forward
+        +bool backward
+        +bool is_original_via_node_ID
+    }
+
+    class ContractorHeapData <<(S,#83e6bc)>> {
+        +short hop
+        +bool target
+        +ContractorHeapData()
+        +ContractorHeapData(short h, bool t)
+    }
+
+    class ContractorThreadData <<(S,#83e6bc)>> {
+        ContractorHeap heap
+        vector<ContractorEdge> inserted_edges
+        vector<NodeID> neighbours
+        ContractorThreadData(NodeID nodes) : heap(nodes) {}
+    }
+
+    class NodePriorityData <<(S,#83e6bc)>> {
+        int depth
+        NodePriorityData() : depth(0) {}
+    }
+
+    class ContractionStats <<(S,#83e6bc)>> {
+        int edges_deleted_count
+        int edges_added_count
+        int original_edges_deleted_count
+        int original_edges_added_count
+        ContractionStats()
+    }
+
+    class RemainingNodeData <<(S,#83e6bc)>> {
+        RemainingNodeData()
+        NodeID id
+        bool is_independent
+    }
+
+
+    class ThreadDataContainer <<(S,#83e6bc)>> {
+        ThreadDataContainer(int number_of_nodes)
+        ContractorThreadData* getThreadData()
+
+        int number_of_nodes
+        typedef tbb::enumerable_thread_specific<shared_ptr<ContractorThreadData>> EnumerableThreadData
+        EnumerableThreadData data
+    }
+
+    class Contractor {
+        -ContractorEdgeData data
+        -typedef DynamicGraph<ContractorEdgeData> ContractorGraph
+        -typedef BinaryHeap<NodeID, NodeID, int, ContractorHeapData, XORFastHashStorage<NodeID, NodeID>> ContractorHeap
+        -typedef ContractorGraph::InputEdge ContractorEdge
+
+        +Contractor(int nodes, ContainerT &input_edge_list)
+        +~Contractor() 
+        +void Run()
+        +void GetEdges(DeallocatingVector<Edge> &edges)
+
+        -void Dijkstra(int max_distance, unsigned number_of_targets, int maxNodes, ContractorThreadData *data, NodeID middleNode)
+        -float EvaluateNodePriority(ContractorThreadData *data, NodePriorityData *node_data, NodeID node)
+        -bool ContractNode(ContractorThreadData *data, NodeID node, ContractionStats *stats = nullptr)
+        -void DeleteIncomingEdges(ContractorThreadData *data, NodeID node)
+        -bool UpdateNodeNeighbours(vector<float> &priorities, vector<NodePriorityData> &node_data, ContractorThreadData *data, NodeID node)
+        -bool IsNodeIndependent(vector<float> &priorities, ContractorThreadData *data, NodeID node)
+        -bool bias(NodeID a, NodeID b)
+
+        -shared_ptr<ContractorGraph> contractor_graph
+        -vector<ContractorGraph::InputEdge> contracted_edge_list
+        -stxxl::vector<QueryEdge> external_edge_list
+        -vector<NodeID> orig_node_id_to_new_id_map
+        -XORFastHash fast_hash
+    }
+
+    ' EdgeBasedGraphFactory.h .cpp
+
+    class SpeedProfileProperties <<(S,#83e6bc)>> {
+        SpeedProfileProperties()
+        int traffic_signal_penalty
+        int u_turn_penalty
+        bool has_turn_penalty_function
+    }
+
+    class EdgeBasedGraphFactory {
+        +EdgeBasedGraphFactory()
+        +EdgeBasedGraphFactory(EdgeBasedGraphFactory &)
+        +struct SpeedProfileProperties
+        +EdgeBasedGraphFactory(shared_ptr<NodeBasedDynamicGraph> &node_based_graph,unique_ptr<RestrictionMap> restricion_map,vector<NodeID> &barrier_node_list, vector<NodeID> &traffic_light_node_list, vector<NodeInfo> &m_node_info_list, SpeedProfileProperties &speed_profile)
+        +void Run(string &original_edge_data_filename, string &geometry_filename, lua_State *lua_state)
+        +void GetEdgeBasedEdges(DeallocatingVector<EdgeBasedEdge> &edges)
+        +void GetEdgeBasedNodes(vector<EdgeBasedNode> &nodes)
+        +TurnInstruction AnalyzeTurn(NodeID u, NodeID v, NodeID w, double angle)
+        +int GetTurnPenalty(double angle, lua_State *lua_state)
+        +unsigned GetNumberOfEdgeBasedNodes()
+        +SpeedProfileProperties speed_profile
+
+        -typedef NodeBasedDynamicGraph::EdgeData EdgeData
+        -unsigned m_number_of_edge_based_nodes
+        -vector<NodeInfo> m_node_info_list
+        -vector<EdgeBasedNode> m_edge_based_node_list
+        -DeallocatingVector<EdgeBasedEdge> m_edge_based_edge_list
+        -shared_ptr<NodeBasedDynamicGraph> m_node_based_graph
+        -unordered_set<NodeID> m_barrier_nodes
+        -unordered_set<NodeID> m_traffic_lights
+        -unique_ptr<RestrictionMap> m_restriction_map
+        -GeometryCompressor m_geometry_compressor
+        -void CompressGeometry()
+        -void RenumberEdges()
+        -void GenerateEdgeExpandedNodes()
+        -void GenerateEdgeExpandedEdges(string &original_edge_data_filename, lua_State *lua_state)
+        -void InsertEdgeBasedNode(NodeID u, NodeID v, bool belongsToTinyComponent)
+        -void FlushVectorToStream(ofstream &edge_data_file, vector<OriginalEdgeData> &original_edge_data_vector)
+        -NodeID max_id
+    }
+
+    ' GeometryCompressor
+
+    class GeometryCompressor {
+        +typedef pair<NodeID, EdgeWeight> CompressedNode
+
+        +GeometryCompressor()
+        +void CompressEdge(EdgeID surviving_edge_id, EdgeID removed_edge_id, NodeID via_node_id, NodeID target_node, EdgeWeight weight1, EdgeWeight weight2)
+
+        +bool HasEntryForID(EdgeID edge_id)
+        +void PrintStatistics()
+        +void SerializeInternalVector(string &path)
+        +unsigned GetPositionForID(EdgeID edge_id)
+        +vector<GeometryCompressor::CompressedNode> &
+        +GetBucketReference(EdgeID edge_id)
+
+        -void IncreaseFreeList()
+        -vector<vector<CompressedNode>> m_compressed_geometries
+        -vector<unsigned> m_free_list
+        -unordered_map<EdgeID, unsigned> m_edge_id_to_list_index_map
+    }
+
+    ' Prepare 
+    class Prepare {
+        +typedef QueryEdge::EdgeData EdgeData
+        +typedef DynamicGraph<EdgeData>::InputEdge InputEdge
+        +typedef StaticGraph<EdgeData>::InputEdge StaticEdge
+        +Prepare()
+        +Prepare(Prepare &)
+        +~Prepare()
+        +int Process(int argc, char *argv[])
+        #bool ParseArguments(int argc, char *argv[])
+        #void CheckRestrictionsFile(FingerPrint &fingerprint_orig)
+        #bool SetupScriptingEnvironment(lua_State *myLuaState, EdgeBasedGraphFactory::SpeedProfileProperties &speed_profile)
+        #size_t BuildEdgeExpandedGraph(lua_State *myLuaState, NodeID nodeBasedNodeNumber, vector<EdgeBasedNode> &nodeBasedEdgeList, DeallocatingVector<EdgeBasedEdge> &edgeBasedEdgeList, EdgeBasedGraphFactory::SpeedProfileProperties &speed_profile)
+        #void WriteNodeMapping()
+        #void BuildRTree(vector<EdgeBasedNode> &node_based_edge_list)
+        -vector<NodeInfo> internal_to_external_node_map
+        -vector<TurnRestriction> restriction_list
+        -vector<NodeID> barrier_node_list
+        -vector<NodeID> traffic_light_list
+        -vector<ImportEdge> edge_list
+        -unsigned requested_num_threads
+        -boost::filesystem::path config_file_path
+        -boost::filesystem::path input_path
+        -boost::filesystem::path restrictions_path
+        -boost::filesystem::path preinfo_path
+        -boost::filesystem::path profile_path
+        -string node_filename
+        -string edge_out
+        -string info_out
+        -string geometry_filename
+        -string graph_out
+        -string rtree_nodes_path
+        -string rtree_leafs_path
+    }
+
+@enduml

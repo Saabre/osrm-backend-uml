@@ -1,0 +1,252 @@
+@startuml
+
+
+    ' BaseDataFacade.h
+
+    ' typedef osrm::range<EdgeID> EdgeRange
+    class BaseDataFacade<class EdgeDataT> {
+        +typedef EdgeBasedNode RTreeLeaf
+        +typedef EdgeDataT EdgeData
+        +BaseDataFacade() {}
+        +virtual ~BaseDataFacade() {}
+        +virtual unsigned GetNumberOfNodes()
+        +virtual unsigned GetNumberOfEdges()
+        +virtual unsigned GetOutDegree(NodeID n)
+        +virtual NodeID GetTarget(EdgeID e)
+        +virtual EdgeDataT &GetEdgeData(EdgeID e)
+        +virtual EdgeID BeginEdges(NodeID n)
+        +virtual EdgeID EndEdges(NodeID n)
+        +virtual EdgeRange GetAdjacentEdgeRange(NodeID node)
+        +virtual EdgeID FindEdge(NodeID from, NodeID to)
+        +virtual EdgeID FindEdgeInEitherDirection(NodeID from, NodeID to)
+        +virtual EdgeID
+        +FindEdgeIndicateIfReverse(NodeID from, NodeID to, bool &result)
+        +virtual FixedPointCoordinate GetCoordinateOfNode(unsigned id)
+        +virtual bool EdgeIsCompressed(unsigned id)
+        +virtual unsigned GetGeometryIndexForEdgeID(unsigned id)
+        +virtual void GetUncompressedGeometry(unsigned id, vector<unsigned> &result_nodes)
+        +virtual TurnInstruction GetTurnInstructionForEdgeID(unsigned id)
+        +virtual bool LocateClosestEndPointForCoordinate(FixedPointCoordinate &input_coordinate, FixedPointCoordinate &result, unsigned zoom_level = 18) = 0
+        +virtual bool FindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, PhantomNode &resulting_phantom_node, unsigned zoom_level) = 0
+        +virtual bool IncrementalFindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, vector<PhantomNode> &resulting_phantom_node_vector, unsigned zoom_level, unsigned number_of_results) = 0
+        +virtual unsigned GetCheckSum()
+        +virtual unsigned GetNameIndexFromEdgeID(unsigned id)
+        +virtual void GetName(unsigned name_id, string &result)
+        +string GetEscapedNameForNameID(unsigned name_id)
+        +virtual string GetTimestamp()
+    }
+
+    ' InternalDataFacade.h
+    class InternalDataFacade<class EdgeDataT> {
+        -typedef BaseDataFacade<EdgeDataT> super
+        -typedef StaticGraph<typename super::EdgeData> QueryGraph
+        -typedef typename QueryGraph::InputEdge InputEdge
+        -typedef typename super::RTreeLeaf RTreeLeaf
+        -InternalDataFacade()
+        -unsigned m_check_sum
+        -unsigned m_number_of_nodes
+        -QueryGraph *m_query_graph
+        -string m_timestamp
+
+        -shared_ptr<ShM<FixedPointCoordinate, false>::vector> m_coordinate_list
+        -ShM<NodeID, false>::vector m_via_node_list
+        -ShM<unsigned, false>::vector m_name_ID_list
+        -ShM<TurnInstruction, false>::vector m_turn_instruction_list
+        -ShM<char, false>::vector m_names_char_list
+        -ShM<bool, false>::vector m_egde_is_compressed
+        -ShM<unsigned, false>::vector m_geometry_indices
+        -ShM<unsigned, false>::vector m_geometry_list
+
+        -boost::thread_specific_ptr<StaticRTree<RTreeLeaf, ShM<FixedPointCoordinate, false>::vector, false>>
+        -m_static_rtree
+        -boost::filesystem::path ram_index_path
+        -boost::filesystem::path file_index_path
+        -RangeTable<16, false> m_name_table
+
+        -void LoadTimestamp(boost::filesystem::path &timestamp_path)
+        -void LoadGraph(boost::filesystem::path &hsgr_path)
+        -void LoadNodeAndEdgeInformation(boost::filesystem::path &nodes_file, boost::filesystem::path &edges_file)
+        -void LoadGeometries(boost::filesystem::path &geometry_file)
+        -void LoadRTree()
+        -void LoadStreetNames(boost::filesystem::path &names_file)
+        +virtual ~InternalDataFacade()
+        +InternalDataFacade(ServerPaths &server_paths)
+        +unsigned GetNumberOfNodes()
+        +unsigned GetNumberOfEdges()
+        +unsigned GetOutDegree(NodeID n) 
+        +NodeID GetTarget(EdgeID e)
+        +EdgeDataT &GetEdgeData(EdgeID e)
+        +EdgeDataT &GetEdgeData(EdgeID e)
+        +EdgeID BeginEdges(NodeID n)
+        +EdgeID EndEdges(NodeID n)
+        +EdgeRange GetAdjacentEdgeRange(NodeID node)
+        +EdgeID FindEdge(NodeID from, NodeID to)
+        +EdgeID FindEdgeInEitherDirection(NodeID from, NodeID to)
+        +EdgeID FindEdgeIndicateIfReverse(NodeID from, NodeID to, bool &result)
+        +FixedPointCoordinate GetCoordinateOfNode(unsigned id)
+        +bool EdgeIsCompressed(unsigned id)
+        +TurnInstruction GetTurnInstructionForEdgeID(unsigned id)
+        +bool LocateClosestEndPointForCoordinate(FixedPointCoordinate &input_coordinate, FixedPointCoordinate &result, unsigned zoom_level = 18)
+        +bool FindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, PhantomNode &resulting_phantom_node, unsigned zoom_level)
+        +bool IncrementalFindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, vector<PhantomNode> &resulting_phantom_node_vector, unsigned zoom_level, unsigned number_of_results)
+        +unsigned GetCheckSum() 
+        +unsigned GetNameIndexFromEdgeID(unsigned id) 
+        +void GetName(unsigned name_id, string &result)
+        +virtual unsigned GetGeometryIndexForEdgeID(unsigned id)
+        +virtual void GetUncompressedGeometry(unsigned id, vector<unsigned> &result_nodes)
+        +string GetTimestamp()
+    }
+
+    ' SharedBarriers
+    
+    class SharedBarriers <<(S,#83e6bc)>> {
+        +SharedBarriers()
+        // Mutex to protect access to the boolean variable
+        +boost::interprocess::named_mutex pending_update_mutex
+        +boost::interprocess::named_mutex update_mutex
+        +boost::interprocess::named_mutex query_mutex
+
+        // Condition that no update is running
+        +boost::interprocess::named_condition no_running_queries_condition
+        +bool update_ongoing // Is there an ongoing update?
+        +int number_of_queries // Is there any query?
+    }
+
+    ' SharedDataFacade
+
+    class SharedDataFacade<class EdgeDataT> {
+
+        -typedef EdgeDataT EdgeData
+        -typedef BaseDataFacade<EdgeData> super
+        -typedef StaticGraph<EdgeData, true> QueryGraph
+        -typedef typename StaticGraph<EdgeData, true>::NodeArrayEntry GraphNode
+        -typedef typename StaticGraph<EdgeData, true>::EdgeArrayEntry GraphEdge
+        -typedef typename RangeTable<16, true>::BlockT NameIndexBlock
+        -typedef typename QueryGraph::InputEdge InputEdge
+        -typedef typename super::RTreeLeaf RTreeLeaf
+        -typedef typename StaticRTree<RTreeLeaf, ShM<FixedPointCoordinate, true>::vector, true>::TreeNode
+        -RTreeNode
+
+        -SharedDataLayout *data_layout
+        -char *shared_memory
+        -SharedDataTimestamp *data_timestamp_ptr
+
+        -SharedDataType CURRENT_LAYOUT
+        -SharedDataType CURRENT_DATA
+        -unsigned CURRENT_TIMESTAMP
+
+        -unsigned m_check_sum
+        -unsigned m_number_of_nodes
+        -shared_ptr<QueryGraph> m_query_graph
+        -shared_ptr<SharedMemory> m_layout_memory
+        -shared_ptr<SharedMemory> m_large_memory
+        -string m_timestamp
+
+        -shared_ptr<ShM<FixedPointCoordinate, true>::vector> m_coordinate_list
+        -ShM<NodeID, true>::vector m_via_node_list
+        -ShM<unsigned, true>::vector m_name_ID_list
+        -ShM<TurnInstruction, true>::vector m_turn_instruction_list
+        -ShM<char, true>::vector m_names_char_list
+        -ShM<unsigned, true>::vector m_name_begin_indices
+        -ShM<bool, true>::vector m_egde_is_compressed
+        -ShM<unsigned, true>::vector m_geometry_indices
+        -ShM<unsigned, true>::vector m_geometry_list
+
+        -boost::thread_specific_ptr<StaticRTree<RTreeLeaf, ShM<FixedPointCoordinate, true>::vector, true>>
+        -m_static_rtree
+        -boost::filesystem::path file_index_path
+
+        -shared_ptr<RangeTable<16, true>> m_name_table
+
+        -void LoadChecksum()
+        -void LoadTimestamp()
+        -void LoadRTree()
+        -void LoadGraph()
+        -void LoadNodeAndEdgeInformation()
+        -void LoadViaNodeList()
+        -void LoadNames()
+        -void LoadGeometries()
+
+        +virtual ~SharedDataFacade() {}
+
+        +SharedDataFacade()
+        +void CheckAndReloadFacade()
+        +unsigned GetNumberOfNodes()
+        +unsigned GetNumberOfEdges()
+        +unsigned GetOutDegree(NodeID n)
+        +NodeID GetTarget(EdgeID e)
+        +EdgeDataT &GetEdgeData(EdgeID e)
+        +EdgeID BeginEdges(NodeID n)
+        +EdgeID EndEdges(NodeID n)
+        +EdgeRange GetAdjacentEdgeRange(NodeID node)
+        +EdgeID FindEdge(NodeID from, NodeID to)
+        +EdgeID FindEdgeInEitherDirection(NodeID from, NodeID to)
+        +EdgeID FindEdgeIndicateIfReverse(NodeID from, NodeID to, bool &result)
+        +FixedPointCoordinate GetCoordinateOfNode(NodeID id)
+        +virtual bool EdgeIsCompressed(unsigned id)
+        +virtual void GetUncompressedGeometry(unsigned id, vector<unsigned> &result_nodes)
+        +virtual unsigned GetGeometryIndexForEdgeID(unsigned id)
+        +TurnInstruction GetTurnInstructionForEdgeID(unsigned id)
+        +bool LocateClosestEndPointForCoordinate(FixedPointCoordinate &input_coordinate, FixedPointCoordinate &result, unsigned zoom_level = 18)
+        +bool FindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, PhantomNode &resulting_phantom_node, unsigned zoom_level) 
+        +bool IncrementalFindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, vector<PhantomNode> &resulting_phantom_node_vector, unsigned zoom_level, unsigned number_of_results)
+        +unsigned GetCheckSum()
+        +unsigned GetNameIndexFromEdgeID(unsigned id)
+        +void GetName(unsigned name_id, string &result)
+        +string GetTimestamp()
+    }
+
+    ' SharedDataType
+
+    enum BlockID {
+        NAME_OFFSETS = 0,
+        NAME_BLOCKS,
+        NAME_CHAR_LIST,
+        NAME_ID_LIST,
+        VIA_NODE_LIST,
+        GRAPH_NODE_LIST,
+        GRAPH_EDGE_LIST,
+        COORDINATE_LIST,
+        TURN_INSTRUCTION,
+        R_SEARCH_TREE,
+        GEOMETRIES_INDEX,
+        GEOMETRIES_LIST,
+        GEOMETRIES_INDICATORS,
+        HSGR_CHECKSUM,
+        TIMESTAMP,
+        FILE_INDEX_PATH,
+        NUM_BLOCKS
+    }
+
+    class SharedDataLayout<typename T> <<(S,#83e6bc)>> {
+        +array<uint64_t, NUM_BLOCKS> num_entries
+        +array<uint64_t, NUM_BLOCKS> entry_size
+
+        +SharedDataLayout()
+        +void PrintInformation()
+
+        +void SetBlockSize(BlockID bid, uint64_t entries)
+        +uint64_t GetBlockSize(BlockID bid)
+        +uint64_t GetSizeOfLayout() 
+        +uint64_t GetBlockOffset(BlockID bid)
+        +template<typename T, bool WRITE_CANARY=false>
+        +T* GetBlockPtr(char* shared_memory, BlockID bid)
+    }
+
+    enum SharedDataType { 
+        CURRENT_REGIONS,
+        LAYOUT_1,
+        DATA_1,
+        LAYOUT_2,
+        DATA_2,
+        LAYOUT_NONE,
+        DATA_NONE 
+    }
+
+    class SharedDataTimestamp <<(S,#83e6bc)>> {
+        +SharedDataType layout
+        +SharedDataType data
+        +unsigned timestamp
+    }
+
+@enduml

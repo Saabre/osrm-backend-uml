@@ -1,0 +1,78 @@
+@startuml
+
+    ' BasePlugin
+    
+    class BasePlugin {
+        BasePlugin()
+        virtual ~BasePlugin()
+        virtual string GetDescriptor()
+        virtual void HandleRequest(RouteParameters &routeParameters, http::Reply &reply)
+    }
+
+    ' DistanceTablePlugin.h
+
+    class DistanceTablePlugin<class DataFacadeT> {
+        -shared_ptr<SearchEngine<DataFacadeT>> search_engine_ptr
+        +DistanceTablePlugin(DataFacadeT *facade)
+        +virtual ~DistanceTablePlugin()
+        +string GetDescriptor()
+        +void HandleRequest(RouteParameters &route_parameters, http::Reply &reply)
+        -string descriptor_string
+        -DataFacadeT *facade
+    }
+
+    ' HelloWorldPlugin
+
+    class HelloWorldPlugin {
+        -string temp_string
+        +HelloWorldPlugin()
+        +virtual ~HelloWorldPlugin()
+        +string GetDescriptor()
+        +void HandleRequest(RouteParameters &routeParameters, http::Reply &reply)
+        -string descriptor_string
+    }
+
+    ' LocatePlugin
+
+    class LocatePlugin<class DataFacadeT> {
+        +LocatePlugin(DataFacadeT *facade)
+        +string GetDescriptor()
+        +LocatePlugin(DataFacadeT *facade)void HandleRequest(RouteParameters &route_parameters, http::Reply &reply)
+        -string descriptor_string
+        -DataFacadeT *facade
+    }
+
+    ' NearestPlugin
+
+     class NearestPlugin<class DataFacadeT> {
+        +NearestPlugin(DataFacadeT *facade)
+        +string GetDescriptor()
+        +void HandleRequest(RouteParameters &route_parameters, http::Reply &reply)
+        -DataFacadeT *facade
+        -string descriptor_string
+    }
+
+    ' TimestampPlugin
+    
+    class TimestampPlugin<class DataFacadeT> {
+        +TimestampPlugin(DataFacadeT *facade)
+        +string GetDescriptor() { return descriptor_string }
+        +void HandleRequest(RouteParameters &route_parameters, http::Reply &reply)
+        -DataFacadeT *facade
+        -string descriptor_string
+    }
+
+    ' ViaRoutePlugin
+
+    class ViaRoutePlugin<class DataFacadeT> {
+        -unordered_map<string, unsigned> descriptor_table
+        -shared_ptr<SearchEngine<DataFacadeT>> search_engine_ptr
+        +ViaRoutePlugin(DataFacadeT *facade)
+        +virtual ~ViaRoutePlugin()
+        +string GetDescriptor()
+        +void HandleRequest(RouteParameters &route_parameters, http::Reply &reply)
+        -string descriptor_string
+        -DataFacadeT *facade
+    }
+
+@enduml

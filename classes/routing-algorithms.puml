@@ -1,0 +1,84 @@
+@startuml
+
+    ' AlternativePathRouting
+
+    class RankedCandidateNode <<(S,#83e6bc)>> {
+        RankedCandidateNode(NodeID node, int length, int sharing)
+        NodeID node
+        int length
+        int sharing
+        bool operator<(RankedCandidateNode &other)
+    }
+
+    class AlternativeRouting<class DataFacadeT> {
+        -typedef BasicRoutingInterface<DataFacadeT> super
+        -typedef typename DataFacadeT::EdgeData EdgeData
+        -typedef SearchEngineData::QueryHeap QueryHeap
+        -typedef pair<NodeID, NodeID> SearchSpaceEdge
+        -DataFacadeT *facade
+        -SearchEngineData &engine_working_data
+        +AlternativeRouting(DataFacadeT *facade, SearchEngineData &engine_working_data)
+        +virtual ~AlternativeRouting()
+        +void operator()(PhantomNodes &phantom_node_pair, RawRouteData &raw_route_data)
+        // unpack alternate <s,..,v,..,t> by exploring search spaces from v
+        -void RetrievePackedAlternatePath(QueryHeap &forward_heap1, QueryHeap &reverse_heap1, QueryHeap &forward_heap2, QueryHeap &reverse_heap2, NodeID s_v_middle, NodeID v_t_middle, vector<NodeID> &packed_path)
+        // compute and unpack <s,..,v> and <v,..,t> by exploring search spaces
+        // from v and intersecting against queues. only half-searches have to be
+        // done at this stage
+        -void ComputeLengthAndSharingOfViaPath(NodeID via_node, int *real_length_of_via_path, int *sharing_of_via_path, vector<NodeID> &packed_shortest_path, EdgeWeight min_edge_offset)
+
+        -void AlternativeRoutingStep(QueryHeap &forward_heap, QueryHeap &reverse_heap, NodeID *middle_node, int *upper_bound_to_shortest_path_distance, vector<NodeID> &search_space_intersection, vector<SearchSpaceEdge> &search_space, EdgeWeight min_edge_offset)
+        -bool ViaNodeCandidatePassesTTest(QueryHeap &existing_forward_heap, QueryHeap &existing_reverse_heap, QueryHeap &new_forward_heap, QueryHeap &new_reverse_heap, RankedCandidateNode &candidate, int length_of_shortest_path, int *length_of_via_path, NodeID *s_v_middle, NodeID *v_t_middle, EdgeWeight min_edge_offset) // conduct T-Test
+    }
+
+    ' BasicRoutingInterface.h
+
+    class BasicRoutingInterface<class DataFacadeT> {
+        -typedef typename DataFacadeT::EdgeData EdgeData
+        #DataFacadeT *facade
+        +BasicRoutingInterface()
+        +BasicRoutingInterface(BasicRoutingInterface &)
+        +BasicRoutingInterface(DataFacadeT *facade)
+        +virtual ~BasicRoutingInterface()
+        +void RoutingStep(SearchEngineData::QueryHeap &forward_heap, SearchEngineData::QueryHeap &reverse_heap, NodeID *middle_node_id, int *upper_bound, int min_edge_offset, bool forward_direction)
+        +void UnpackPath(vector<NodeID> &packed_path, PhantomNodes &phantom_node_pair, vector<PathData> &unpacked_path)
+        +void UnpackEdge(NodeID s, NodeID t, vector<NodeID> &unpacked_path)
+        +void RetrievePackedPathFromHeap(SearchEngineData::QueryHeap &forward_heap, SearchEngineData::QueryHeap &reverse_heap, NodeID middle_node_id, vector<NodeID> &packed_path)
+        +void RetrievePackedPathFromSingleHeap(SearchEngineData::QueryHeap &search_heap, NodeID middle_node_id, vector<NodeID> &packed_path)
+    }
+
+    ' ManyToManyRouting
+
+    class NodeBucket <<(S,#83e6bc)>> {
+        +unsigned target_id // essentially a row in the distance matrix
+        +EdgeWeight distance
+        +NodeBucket(unsigned target_id, EdgeWeight distance)
+    }
+
+    class ManyToManyRouting<class DataFacadeT> {
+        -typedef BasicRoutingInterface<DataFacadeT> super
+        -typedef SearchEngineData::QueryHeap QueryHeap
+        -SearchEngineData &engine_working_data
+        -typedef unordered_map<NodeID, vector<NodeBucket>> SearchSpaceWithBuckets
+        +ManyToManyRouting(DataFacadeT *facade, SearchEngineData &engine_working_data)
+        +~ManyToManyRouting()
+        +shared_ptr<vector<EdgeWeight>> operator()(PhantomNodeArray &phantom_nodes_array)
+        +void ForwardRoutingStep(unsigned source_id, unsigned number_of_locations, QueryHeap &query_heap, SearchSpaceWithBuckets &search_space_with_buckets, shared_ptr<vector<EdgeWeight>> result_table)
+        +void BackwardRoutingStep(unsigned target_id, QueryHeap &query_heap, SearchSpaceWithBuckets &search_space_with_buckets)
+        +void RelaxOutgoingEdges(NodeID node, EdgeWeight distance, QueryHeap &query_heap)
+        +bool StallAtNode(NodeID node, EdgeWeight distance, QueryHeap &query_heap)
+    }
+
+
+    ' ShortestPathRouting
+
+    class ShortestPathRouting<class DataFacadeT> {
+        -typedef BasicRoutingInterface<DataFacadeT> super
+        -typedef SearchEngineData::QueryHeap QueryHeap
+        -SearchEngineData &engine_working_data
+        +ShortestPathRouting(DataFacadeT *facade, SearchEngineData &engine_working_data)
+        +~ShortestPathRouting()
+        +void operator()(vector<PhantomNodes> &phantom_nodes_vector, vector<bool> &uturn_indicators, RawRouteData &raw_route_data)
+    }
+
+@enduml

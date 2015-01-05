@@ -1,0 +1,127 @@
+@startuml
+
+    ' BFSComponentExplorer.h
+
+    class BFSComponentExplorer {
+        -vector<unsigned> m_component_index_list
+        -vector<NodeID> m_component_index_size
+        -GraphT &m_graph
+        -RestrictionMap &m_restriction_map
+        -unordered_set<NodeID> &m_barrier_nodes
+
+        +int GetComponentSize(NodeID node)
+        +int GetNumberOfComponents()
+        +void run()
+        -unsigned ExploreComponent(queue<pair<NodeID, NodeID>> &bfs_queue, NodeID node, unsigned current_component)
+    }
+
+    ' DouglasPeucker.cpp .h
+
+    class CoordinatePairCalculator <<(S,#83e6bc)>> {
+        +float first_lat
+        +float first_lon
+        +float second_lat
+        +float second_lon
+
+        +CoordinatePairCalculator()
+        +CoordinatePairCalculator(FixedPointCoordinate &coordinate_a, FixedPointCoordinate &coordinate_b)
+        +int operator()(FixedPointCoordinate &other)
+    }
+
+    class DouglasPeucker {
+        -vector<int> douglas_peucker_thresholds
+        -pair<unsigned, unsigned> GeometryRange
+        -stack<GeometryRange> recursion_stack
+
+        +DouglasPeucker()
+        +void Run(vector<SegmentInformation> &input_geometry, unsigned zoom_level)
+    }
+
+    ' ExtractRouteNames.h
+
+    class RouteNames <<(S,#83e6bc)>> {
+        string shortest_path_name_1
+        string shortest_path_name_2
+        string alternative_path_name_1
+        string alternative_path_name_2
+    }
+
+    class ExtractRouteNames <<(S,#83e6bc)>> {
+        -SegmentT PickNextLongestSegment(vector<SegmentT> &segment_list, unsigned blocked_name_id)
+        +RouteNames operator()(vector<SegmentT> &shortest_path_segments, vector<SegmentT> &alternative_path_segments, DataFacadeT *facade)
+    }
+
+    ' IteratorBasedCRC32.h
+
+    class IteratorbasedCRC32 {
+        -typedef typename ContainerT::iterator IteratorType
+        -unsigned crc
+        -bool use_SSE42_CRC_function
+
+        -unsigned SoftwareBasedCRC32(char *str, unsigned len)
+        -unsigned SSE42BasedCRC32(char *str, unsigned len)
+        -unsigned cpuid() const
+        -bool DetectNativeCRC32Support()
+
+        +IteratorbasedCRC32()
+        +unsigned operator()(IteratorType iter, IteratorType end)
+    }
+
+    ' ObjectToBase64.h
+    '   Function only
+
+    ' PolylineCompressor.cpp .h
+
+    class PolylineCompressor {
+        -void encodeVectorSignedNumber(vector<int> &numbers, string &output)
+        -void encodeNumber(int number_to_encode, string &output)
+        +JSON::String printEncodedString(vector<SegmentInformation> &polyline)
+        +JSON::Array printUnencodedString(vector<SegmentInformation> &polyline)
+    }
+
+    class TarjanNode <<(S,#83e6bc)>> {
+        TarjanNode()
+        unsigned index
+        unsigned low_link
+        bool on_stack
+    }
+
+    class TarjanEdgeData <<(S,#83e6bc)>> {
+        TarjanEdgeData()
+        TarjanEdgeData(int distance, unsigned name_id)
+        int distance
+        unsigned name_id
+    }
+
+    class TarjanStackFrame <<(S,#83e6bc)>> {
+        TarjanStackFrame(NodeID v, NodeID parent)
+        NodeID v
+        NodeID parent
+    }
+
+    class TarjanSCC {
+        -typedef DynamicGraph<TarjanEdgeData> TarjanDynamicGraph
+        -typedef TarjanDynamicGraph::InputEdge TarjanEdge
+        -typedef pair<NodeID, NodeID> RestrictionSource
+        -typedef pair<NodeID, bool> RestrictionTarget
+        -typedef vector<RestrictionTarget> EmanatingRestrictionsVector
+        -typedef unordered_map<RestrictionSource, unsigned> RestrictionMap
+
+        -vector<NodeInfo> m_coordinate_list
+        -vector<EmanatingRestrictionsVector> m_restriction_bucket_list
+        -shared_ptr<TarjanDynamicGraph> m_node_based_graph
+        -unordered_set<NodeID> barrier_node_list
+        -unordered_set<NodeID> traffic_light_list
+        -unsigned m_restriction_counter
+        -RestrictionMap m_restriction_map
+
+        +TarjanSCC(int number_of_nodes, vector<NodeBasedEdge> &input_edges, vector<NodeID> &bn, vector<NodeID> &tl, vector<TurnRestriction> &irs, vector<NodeInfo> &nI)
+        +~TarjanSCC()
+        +void Run()
+
+        -unsigned CheckForEmanatingIsOnlyTurn(NodeID u, NodeID v)
+        -bool CheckIfTurnIsRestricted(NodeID u, NodeID v, NodeID w)
+        -void DeleteFileIfExists(string &file_name)
+    }
+
+@enduml

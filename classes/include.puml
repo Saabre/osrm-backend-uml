@@ -1,0 +1,72 @@
+@startuml
+
+    ' Header
+    class http.Header <<(S,#83e6bc)>> {
+        +Header& operator=(Header& other)
+        +Header(string & name, string & value)
+        +Header(Header && other)
+        +void Clear()
+        +string name
+        +string value
+    }
+
+    ' Reply    
+    enum http.status_type { 
+        ok = 200,
+        badRequest = 400,
+        internalServerError = 500 
+    }
+
+    class http.Reply {
+        +status_type status
+        +vector<Header> headers
+        +vector<boost::asio::const_buffer> ToBuffers()
+        +vector<boost::asio::const_buffer> HeaderstoBuffers()
+        +vector<char> content
+        +static Reply StockReply(status_type status)
+        +void SetSize(unsigned size)
+        +void SetUncompressedSize()
+        +Reply()
+        -string ToString(Reply::status_type status)
+        -boost::asio::const_buffer ToBuffer(Reply::status_type status)
+    }
+    
+    ' RouteParameters
+
+    class RouteParameters <<(S,#83e6bc)>> {
+        +RouteParameters()
+        +void setZoomLevel(short level)
+        +void setAlternateRouteFlag(bool flag)
+        +void setUTurn(bool flag)
+        +void setAllUTurns(bool flag)
+        +void setDeprecatedAPIFlag(string &)
+        +void setChecksum(unsigned check_sum)
+        +void setInstructionFlag(bool flag)
+        +void setService(string &service)
+        +void setOutputFormat(string &format)
+        +void setJSONpParameter(string &parameter)
+        +void addHint(string &hint)
+        +void setLanguage(string &language)
+        +void setGeometryFlag(bool flag)
+        +void setCompressionFlag(bool flag)
+        +void addCoordinate(boost::fusion::vector<double, double> &coordinates)
+        +short zoom_level
+        +bool print_instructions
+        +bool alternate_route
+        +bool geometry
+        +bool compression
+        +bool deprecatedAPI
+        +bool uturn_default
+        +unsigned check_sum
+        +string service
+        +string output_format
+        +string jsonp_parameter
+        +string language
+        +vector<string> hints
+        +vector<bool> uturns
+        +vector<FixedPointCoordinate> coordinates
+    }
+
+    ' ServerPaths.h
+    '     Only typedefs
+@enduml

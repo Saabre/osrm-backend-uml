@@ -1,0 +1,115 @@
+@startuml
+
+    ' Azimuth.h
+    class Azimuth <<(S,#83e6bc)>> {
+        static string Get(double heading)
+    }
+
+    ' BoostFileSystemFix.h
+    '   Only functions 
+
+    ' ComputeAngle
+    '   Only functions 
+
+    ' ContainerUtils
+    '   Only functions 
+
+    ' DataStoreOptions
+    '   Only functions 
+
+    ' FingerPrint.cpp .h 
+
+    class FingerPrint {
+        +FingerPrint()
+        +FingerPrint(FingerPrint&)
+        +~FingerPrint()
+        +boost::uuids::uuid &GetFingerPrint()
+        +bool IsMagicNumberOK()
+        +bool TestGraphUtil(FingerPrint &other)
+        +bool TestPrepare(FingerPrint &other)
+        +bool TestRTree(FingerPrint &other)
+        +bool TestNodeInfo(FingerPrint &other)
+        +bool TestQueryObjects(FingerPrint &other)
+        -unsigned magic_number
+        -char md5_prepare[33]
+        -char md5_tree[33]
+        -char md5_graph[33]
+        -char md5_objects[33]
+        -boost::uuids::uuid named_uuid
+        -bool has_64_bits
+    }
+
+    ' GitDescription
+    '   Nothing
+
+    ' GraphLoader
+    '   Only functions 
+
+    ' IniFileUtil
+    '   Only functions 
+
+    ' LuaUtil
+    '   Only functions 
+
+    ' MachineInfo
+    '   Only functions 
+
+    ' NumericUtil
+    '   Only functions 
+
+    ' OSRMException
+    ' extends exception
+    class OSRMException {
+        +OSRMException(char *message)
+        +OSRMException(string &message)
+        +virtual ~OSRMException() throw()
+        -virtual char *what() throw()
+        -string message
+    }
+
+    ' ProgramOptions
+    '   Only functions 
+
+    ' ProgramOptions
+    '   Only functions
+
+    ' SimpleLogger
+
+    enum LogLevel {
+        logINFO,
+        logWARNING,
+        logDEBUG 
+    }
+
+    class LogPolicy {
+        +void Unmute()
+        +void Mute()
+        +bool IsMute() 
+        +static LogPolicy &GetInstance()
+        +LogPolicy(LogPolicy &)
+        -LogPolicy()
+        -atomic<bool> m_is_mute
+    }
+
+    class SimpleLogger {
+        +SimpleLogger()
+        +mutex& get_mutex()
+        +ostringstream &Write(LogLevel l)
+
+        +virtual ~SimpleLogger()
+        -LogLevel level
+        -ostringstream os
+    }
+
+    ' StdHashExtensions
+    '   Only functions
+
+    ' StringUtil
+    '   Only functions
+
+    ' TimingUtil
+    '   Only functions
+
+    ' TrigonometryTables
+    '   Only functions
+@enduml

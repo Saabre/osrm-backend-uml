@@ -1,0 +1,21 @@
+@startuml
+
+    ' CompressionType.h 
+
+    enum http.CompressionType { 
+        noCompression
+        gzipRFC1952
+        deflateRFC1951 
+    }
+
+    ' Reply.cpp
+    '     Already in Include
+
+    ' Request
+    class http.Request <<(S,#83e6bc)>> {
+        string uri
+        string referrer
+        string agent
+        boost::asio::ip::address endpoint
+    }
+@enduml

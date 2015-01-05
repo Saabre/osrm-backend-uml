@@ -1,0 +1,381 @@
+@startuml
+
+    ' Range.h
+    
+    class range<Integer> {
+        -Integer last
+        -Integer iter
+        +range(Integer start, Integer end)
+        .. Iterable functions ..
+        +range &begin()
+        +range &end()
+        +Integer front()
+        +Integer back()
+        .. Iterator functions..
+        +bool operator!=(range &)
+        +void operator++() { ++iter }
+        +Integer operator*()
+    }
+
+    ' Range Table
+
+    class RangeTable<unsigned BLOCK_SIZE, bool USE_SHARED_MEMORY> {
+        +typedef array<unsigned char, BLOCK_SIZE> BlockT
+        +typedef typename ShM<BlockT, USE_SHARED_MEMORY>::vector   BlockContainerT
+        +typedef typename ShM<unsigned, USE_SHARED_MEMORY>::vector OffsetContainerT
+        +typedef osrm::range<unsigned> RangeT
+        +friend ostream& operator<< <>(ostream &out, RangeTable &table)
+        +friend istream& operator>> <>(istream &in, RangeTable &table)
+        +RangeTable() 
+        +RangeTable(OffsetContainerT& external_offsets, BlockContainerT& external_blocks, unsigned sum_lengths)
+        +RangeTable(vector<unsigned>& lengths)
+        +RangeT GetRange(unsigned id) const
+        -unsigned PrefixSumAtIndex(int index, BlockT& block)
+        -OffsetContainerT block_offsets// contains offset for each differential block
+        -BlockContainerT diff_blocks // blocks of differential encoded offsets, should be aligned
+        -unsigned sum_lengths
+    }
+
+    ' RawRouteData
+    '     Only structs
+
+    ' Restrictions
+    '     Only structs
+
+    ' RestrictionMap.cpp .h
+
+    class RestrictionSource <<(S,#83e6bc)>> {
+        +NodeID start_node
+        +NodeID via_node
+        +RestrictionSource(NodeID start, NodeID via)
+        +friend bool operator==(RestrictionSource &lhs, RestrictionSource &rhs)
+    }
+
+    class RestrictionTarget <<(S,#83e6bc)>> {
+        +NodeID target_node
+        +bool is_only
+        +RestrictionTarget(NodeID target, bool only)
+        +friend bool operator==(RestrictionTarget &lhs, RestrictionTarget &rhs)
+    }
+
+    class RestrictionMap {
+        +RestrictionMap(shared_ptr<NodeBasedDynamicGraph> &graph, vector<TurnRestriction> &input_restrictions_list)
+        +void FixupArrivingTurnRestriction(NodeID u, NodeID v, NodeID w)
+        +void FixupStartingTurnRestriction(NodeID u, NodeID v, NodeID w)
+        +NodeID CheckForEmanatingIsOnlyTurn(NodeID u, NodeID v)
+        +bool CheckIfTurnIsRestricted(NodeID u, NodeID v, NodeID w)
+        +bool IsViaNode(NodeID node)
+        +size_t size()
+        -bool IsSourceNode(NodeID node)
+        -typedef vector<RestrictionTarget> EmanatingRestrictionsVector
+        -typedef NodeBasedDynamicGraph::EdgeData EdgeData
+        -size_t m_count
+        -shared_ptr<NodeBasedDynamicGraph> m_graph
+        -vector<EmanatingRestrictionsVector> m_restriction_bucket_list //! index -> list of (target, isOnly)
+        -unordered_map<RestrictionSource, unsigned> m_restriction_map //! maps (start, via) -> bucket index
+        -unordered_set<NodeID> m_restriction_start_nodes
+        -unordered_set<NodeID> m_no_turn_via_node_set
+    }
+
+    ' SearchEngine.cpp .h
+
+    class SearchEngine<class DataFacadeT> {
+        -DataFacadeT *facade
+        -SearchEngineData engine_working_data
+        +ShortestPathRouting<DataFacadeT> shortest_path
+        +AlternativeRouting<DataFacadeT> alternative_path
+        +ManyToManyRouting<DataFacadeT> distance_table
+        +SearchEngine(DataFacadeT *facade)
+        +~SearchEngine()
+    }
+
+    ' SearchEngineData.cpp .h
+
+    class HeapData <<(S,#83e6bc)>> {
+        +NodeID parent
+        +HeapData(NodeID p)
+    }
+
+    class SearchEngineData <<(S,#83e6bc)>> {
+        +typedef BinaryHeap<NodeID, NodeID, int, HeapData, UnorderedMapStorage<NodeID, int>> QueryHeap
+        +typedef boost::thread_specific_ptr<QueryHeap> SearchEngineHeapPtr
+        +{static} SearchEngineHeapPtr forwardHeap
+        +{static} SearchEngineHeapPtr backwardHeap
+        +{static} SearchEngineHeapPtr forwardHeap2
+        +{static} SearchEngineHeapPtr backwardHeap2
+        +{static} SearchEngineHeapPtr forwardHeap3
+        +{static} SearchEngineHeapPtr backwardHeap3
+        +void InitializeOrClearFirstThreadLocalStorage(unsigned number_of_nodes)
+        +void InitializeOrClearSecondThreadLocalStorage(unsigned number_of_nodes)
+        +void InitializeOrClearThirdThreadLocalStorage(unsigned number_of_nodes)
+    } 
+
+    ' SegmentInformation.h
+
+    class SegmentInformation <<(S,#83e6bc)>> {
+        +FixedPointCoordinate location
+        +NodeID name_id
+        +EdgeWeight duration
+        +float length
+        +short bearing // more than enough [0..3600] fits into 12 bits
+        +TurnInstruction turn_instruction
+        +bool necessary
+        +bool is_via_location
+        +SegmentInformation(FixedPointCoordinate &location, NodeID name_id, EdgeWeight duration, float length, TurnInstruction turn_instruction, bool necessary, bool is_via_location)
+        +SegmentInformation(FixedPointCoordinate &location, NodeID name_id, EdgeWeight duration, float length, TurnInstruction turn_instruction)
+    }
+
+    ' SharedMemoryFactory.h
+    ' SharedMemoryVectorWrapper.h
+    '    Too complicated at this time
+
+    ' StaticGraph.h
+
+    class InputEdge<typename... Ts>{
+        +NodeIterator source
+        +NodeIterator target
+        +EdgeDataT data
+        +InputEdge(NodeIterator source, NodeIterator target, Ts &&...data)
+        +bool operator<(InputEdge &right) 
+    }
+
+    class NodeArrayEntry <<(S,#83e6bc)>> {
+        +EdgeIterator first_edge // index of the first edge
+    }
+
+    class EdgeArrayEntry <<(S,#83e6bc)>> {
+        +NodeID target
+        +EdgeDataT data
+    }
+
+    class StaticGraph<typename EdgeDataT, bool UseSharedMemory> {
+        +typedef NodeID NodeIterator
+        +typedef NodeID EdgeIterator
+        +typedef EdgeDataT EdgeData
+        +typedef osrm::range<EdgeIterator> EdgeRange
+        +EdgeRange GetAdjacentEdgeRange(NodeID node)
+        +StaticGraph(int nodes, vector<InputEdge> &graph)
+        +StaticGraph(typename ShM<NodeArrayEntry, UseSharedMemory>::vector &nodes, typename ShM<EdgeArrayEntry, UseSharedMemory>::vector &edges)
+        +unsigned GetNumberOfNodes()
+        +unsigned GetNumberOfEdges()
+        +unsigned GetOutDegree(NodeIterator n)
+        +NodeIterator GetTarget(EdgeIterator e)
+        +EdgeDataT &GetEdgeData(EdgeIterator e)
+        +EdgeDataT &GetEdgeData(EdgeIterator e)
+        +EdgeIterator BeginEdges(NodeIterator n)
+        +EdgeIterator EndEdges(NodeIterator n)
+        +EdgeIterator FindEdge(NodeIterator from, NodeIterator to) // searches for a specific edge
+        +EdgeIterator FindEdgeInEitherDirection(NodeIterator from, NodeIterator to)
+        +EdgeIterator FindEdgeIndicateIfReverse(NodeIterator from, NodeIterator to, bool &result)
+        -NodeIterator number_of_nodes
+        -EdgeIterator number_of_edges
+        -typename ShM<NodeArrayEntry, UseSharedMemory>::vector node_array
+        -typename ShM<EdgeArrayEntry, UseSharedMemory>::vector edge_array
+    }
+
+    ' StaticKDTree.h
+
+    class BoundingBox<unsigned k, typename T> {
+        +BoundingBox()
+
+        +T min[k]
+        +T max[k]
+    }
+
+    class NoData <<(S,#83e6bc)>> {
+    }
+
+    class EuclidianMetric<unsigned k, typename T> {
+        +double operator()(T left[k], T right[k])
+        +double operator()(BoundingBox<k, T> &box, T point[k])
+    }
+
+    class InputPoint <<(S,#83e6bc)>> {
+        +T coordinates[k]
+        +Data data
+        +bool operator==(InputPoint &right)
+    }
+
+    class Tree <<(S,#83e6bc)>> {
+        +Iterator left
+        +Iterator right
+        +unsigned dimension
+        +Tree() {}
+        +Tree(Iterator l, Iterator r, unsigned d)
+    }
+
+    class Less {
+        +Less(unsigned d)
+        +bool operator()(InputPoint &left, InputPoint &right)
+        -unsigned dimension
+    }
+
+    class NNTree <<(S,#83e6bc)>> {
+        +Iterator left
+        +Iterator right
+        +unsigned dimension
+        +BoundingBox<k, T> box
+        +NNTree()
+        +NNTree(Iterator l, Iterator r, unsigned d, BoundingBox<k, T> &b)
+    }
+
+    class StaticKDTree<unsigned k, typename T, typename Data = NoData, typename Metric = EuclidianMetric<k, T>> {
+        +StaticKDTree(vector<InputPoint> *points)
+        +~StaticKDTree()
+        +bool NearestNeighbor(InputPoint *result, InputPoint &point)
+        -typedef unsigned Iterator
+        -BoundingBox<k, T> boundingBox
+        -InputPoint *kdtree
+        -Iterator size
+    }
+
+    ' StaticRTree 
+
+    class RectangleInt2D <<(S,#83e6bc)>> {
+        +RectangleInt2D()
+        +int32_t min_lon, max_lon
+        +int32_t min_lat, max_lat
+        +void InitializeMBRectangle(array<EdgeDataT, LEAF_NODE_SIZE> &objects, uint32_t element_count, vector<NodeInfo> &coordinate_list)
+        +void MergeBoundingBoxes(RectangleInt2D &other)
+        +FixedPointCoordinate Centroid()
+        +bool Intersects(RectangleInt2D &other)
+        +float GetMinDist(FixedPointCoordinate &location)
+        +float GetMinMaxDist(FixedPointCoordinate &location) 
+        +bool Contains(FixedPointCoordinate &location)
+        +friend ostream &operator<<(ostream &out, RectangleInt2D &rect)
+    }
+
+    class TreeNode <<(S,#83e6bc)>> {
+        +TreeNode()
+        +RectangleT minimum_bounding_rectangle
+        +uint32_t child_count
+        +bool child_is_on_disk
+        +uint32_t children[BRANCHING_FACTOR]
+    }
+
+    class WrappedInputElement <<(S,#83e6bc)>> {
+        +WrappedInputElement(uint64_t _hilbert_value, uint32_t _array_index)
+        +WrappedInputElement()
+        +uint64_t m_hilbert_value
+        +uint32_t m_array_index
+        +bool operator<(WrappedInputElement &other) const
+    }
+
+    class LeafNode <<(S,#83e6bc)>> {
+        +LeafNode()
+        +uint32_t object_count
+        +array<EdgeDataT, LEAF_NODE_SIZE> objects
+    }
+
+    class QueryCandidate <<(S,#83e6bc)>> {
+        +QueryCandidate(float dist, uint32_t n_id)
+        +QueryCandidate()
+        +float min_dist
+        +uint32_t node_id
+        +bool operator<(QueryCandidate &other) const
+    }
+
+    ' : public boost::static_visitor<bool>
+    class decide_type_visitor<typename AnotherType> {
+        +bool operator()(TreeNode &)
+        +template
+        +bool operator()(AnotherType &)
+    }
+
+    class IncrementalQueryCandidate <<(S,#83e6bc)>> {
+        +IncrementalQueryCandidate(float dist, IncrementalQueryNodeType &node)
+        +IncrementalQueryCandidate()
+        +bool operator<(IncrementalQueryCandidate &other)
+        +bool RepresentsTreeNode()
+        +float min_dist
+        +IncrementalQueryNodeType node
+    }
+
+    class StaticRTree<class EdgeDataT, class CoordinateListT, bool UseSharedMemory, uint32_t BRANCHING_FACTOR=64, uint32_t LEAF_NODE_SIZE> {
+        +typedef RectangleInt2D RectangleT
+        -typedef boost::variant<TreeNode, EdgeDataT> IncrementalQueryNodeType
+        -typename ShM<TreeNode, UseSharedMemory>::vector m_search_tree
+        -uint64_t m_element_count
+        -string m_leaf_node_filename
+        -shared_ptr<CoordinateListT> m_coordinate_list
+        -boost::filesystem::ifstream leaves_stream
+        +StaticRTree()
+        +StaticRTree(StaticRTree &)
+        ' // Construct a packed Hilbert-R-Tree with Kamel-Faloutsos algorithm [1]
+        +StaticRTree(vector<EdgeDataT> &input_data_vector, string tree_node_filename, string leaf_node_filename, vector<NodeInfo> &coordinate_list)
+        '// Read-only operation for queries
+        +StaticRTree(boost::filesystem::path &node_file, boost::filesystem::path &leaf_file, shared_ptr<CoordinateListT> coordinate_list)
+        +StaticRTree(TreeNode *tree_node_ptr, uint64_t number_of_nodes, boost::filesystem::path &leaf_file, shared_ptr<CoordinateListT> coordinate_list)
+        ' // Read-only operation for queries
+        +bool LocateClosestEndPointForCoordinate(FixedPointCoordinate &input_coordinate, FixedPointCoordinate &result_coordinate, unsigned zoom_level)
+        ' // implementation of the Hjaltason/Samet query [3], a BFS traversal of the tree
+        +bool IncrementalFindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, vector<PhantomNode> &result_phantom_node_vector, unsigned zoom_level, unsigned number_of_results, unsigned max_checked_segments = 4*LEAF_NODE_SIZE)
+        ' // implementation of the Hjaltason/Samet query [3], a BFS traversal of the tree
+        +bool IncrementalFindPhantomNodeForCoordinateWithDistance(FixedPointCoordinate &input_coordinate, vector<pair<PhantomNode, double>> &result_phantom_node_vector, unsigned zoom_level, unsigned number_of_results, unsigned max_checked_segments = 4*LEAF_NODE_SIZE)
+        +bool FindPhantomNodeForCoordinate(FixedPointCoordinate &input_coordinate, PhantomNode &result_phantom_node, unsigned zoom_level)
+        -void SetForwardAndReverseWeightsOnPhantomNode(EdgeDataT & nearest_edge, PhantomNode &result_phantom_node)
+        -void FixUpRoundingIssue(FixedPointCoordinate &input_coordinate, PhantomNode &result_phantom_node)
+        -float ExploreTreeNode(TreeNode &parent, FixedPointCoordinate &input_coordinate, float min_dist, float min_max_dist, QueueT &traversal_queue)
+        -void LoadLeafFromDisk(uint32_t leaf_id, LeafNode &result_node)
+        -bool EdgesAreEquivalent(FixedPointCoordinate &a, FixedPointCoordinate &b, FixedPointCoordinate &c, FixedPointCoordinate &d)
+    }
+    ' TurnInstruction.h
+
+    enum TurnInstruction {
+        NoTurn = 0, GoStraight, TurnSlightRight, TurnRight, TurnSharpRight, UTurn,
+        TurnSharpLeft, TurnLeft, TurnSlightLeft, ReachViaLocation, HeadOn, EnterRoundAbout,
+        LeaveRoundAbout, StayOnRoundAbout, StartAtEndOfStreet, ReachedYourDestination,
+        EnterAgainstAllowedDirection, LeaveAgainstAllowedDirection,
+        InverseAccessRestrictionFlag = 127,
+        AccessRestrictionFlag = 128,
+        AccessRestrictionPenalty = 129
+    }
+
+    class TurnInstructionsClass <<(S,#83e6bc)>> {
+        +TurnInstructionsClass()
+        +TurnInstructionsClass(TurnInstructionsClass&)
+        +{static} TurnInstruction GetTurnDirectionOfInstruction(double angle)
+        +{static} bool TurnIsNecessary(TurnInstruction turn_instruction)
+    }
+
+    ' XORFastHash.h
+
+    class XORFastHash {
+        -vector<unsigned short> table1
+        -vector<unsigned short> table2
+        +XORFastHash()
+        +unsigned short operator()(unsigned originalValue)
+    }
+
+    class XORMiniHash {
+        -vector<unsigned char> table1
+        -vector<unsigned char> table2
+        -vector<unsigned char> table3
+        -vector<unsigned char> table4
+        +XORMiniHash()
+        +unsigned char operator()(unsigned originalValue)
+    }
+
+    ' XORFastHashStorage.h
+
+    class HashCell <<(S,#83e6bc)>> {
+        +Key key
+        +NodeID id
+        +unsigned time
+        +HashCell()
+        +HashCell(HashCell &other)
+        +operator Key()
+        +void operator=(Key &key_to_insert)
+    }
+
+    class XORFastHashStorage<typename NodeID, typename Key> {
+        +XORFastHashStorage(size_t)
+        +HashCell &operator[](NodeID node)
+        +void Clear()
+        -XORFastHashStorage()
+        -vector<HashCell> positions
+        -XORFastHash fast_hasher
+        -unsigned current_timestamp
+    }
+
+@enduml

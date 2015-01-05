@@ -1,0 +1,28 @@
+@startuml
+
+    ' OSRM.h
+
+    class OSRM {
+        -OSRM_impl *OSRM_pimpl_
+        +OSRM(ServerPaths &paths, bool use_shared_memory = false)
+        +~OSRM()
+        +void RunQuery(RouteParameters &route_parameters, http::Reply &reply)
+    }
+
+    'OSRM_impl.cpp .h
+
+    class OSRM_impl {
+        -typedef std::unordered_map<std::string, BasePlugin *> PluginMap
+        +OSRM_impl(ServerPaths &paths, bool use_shared_memory)
+        +OSRM_impl(OSRM_impl &)
+        +virtual ~OSRM_impl()
+        +void RunQuery(RouteParameters &route_parameters, http::Reply &reply)
+        -void RegisterPlugin(BasePlugin *plugin)
+        -PluginMap plugin_map
+        -bool use_shared_memory
+        -SharedBarriers *barriervoid RegisterPlugin(BasePlugin *plugin)
+        -BaseDataFacade<QueryEdge::EdgeData> *query_data_facade
+    }
+
+
+@enduml
